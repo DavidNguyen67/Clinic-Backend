@@ -11,10 +11,6 @@ import java.util.Map;
 @Getter
 @Setter
 public class UpdateMedicalRecordDto {
-    private String patientProfileId;
-
-    private String doctorProfileId;
-
     private String appointmentId;
 
     private String chiefComplaint;

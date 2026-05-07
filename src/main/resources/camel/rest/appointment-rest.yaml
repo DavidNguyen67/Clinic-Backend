@@ -33,6 +33,24 @@
         to: direct:public-appointment-create
 
 - rest:
+    path: /v1/doctor/appointment
+    get:
+      - path: /
+        to: direct:doctor-appointment-list
+    patch:
+      - path: /{id}
+        to: direct:doctor-appointment-update
+
+- rest:
+    path: /v1/staff/appointment
+    get:
+      - path: /
+        to: direct:staff-appointment-list
+    patch:
+      - path: /{id}
+        to: direct:staff-appointment-update
+
+- rest:
     path: /v1/patient/appointment
     get:
       - path: /

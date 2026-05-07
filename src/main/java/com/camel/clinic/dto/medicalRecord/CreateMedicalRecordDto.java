@@ -12,12 +12,6 @@ import java.util.Map;
 @Getter
 @Setter
 public class CreateMedicalRecordDto {
-    @NotNull(message = "Patient ID is required")
-    private String patientProfileId;
-
-    @NotNull(message = "Doctor ID is required")
-    private String doctorProfileId;
-
     @NotNull(message = "Appointment ID is required")
     private String appointmentId;
 

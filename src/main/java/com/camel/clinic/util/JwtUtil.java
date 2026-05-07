@@ -35,9 +35,6 @@ public class JwtUtil {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
 
-    @Value("${jwt.refresh-cookie-name}")
-    private String refreshCookieName;
-
     private PrivateKey privateKey;
     private PublicKey publicKey;
 
@@ -109,18 +106,6 @@ public class JwtUtil {
         return publicKey;
     }
 
-    public long getJwtExpiration() {
-        return jwtExpiration;
-    }
-
-    public long getRefreshExpiration() {
-        return refreshExpiration;
-    }
-
-    public String getRefreshCookieName() {
-        return refreshCookieName;
-    }
-
     public String generateToken(User user) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
@@ -163,11 +148,6 @@ public class JwtUtil {
         return claims.getExpiration();
     }
 
-    public long getRemainingMillis(String token) {
-        Date exp = getExpirationFromToken(token);
-        long remaining = exp.getTime() - System.currentTimeMillis();
-        return Math.max(0, remaining);
-    }
 
     public String getUserIdFromToken(String token) {
         Claims claims = Jwts.parser()
@@ -190,11 +170,6 @@ public class JwtUtil {
     public String getEmailFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("email", String.class);
-    }
-
-    public String getRoleFromToken(String token) {
-        Claims claims = getClaimsFromToken(token);
-        return claims.get("role", String.class);
     }
 
     public String getTokenType(String token) {
@@ -244,7 +219,7 @@ public class JwtUtil {
     }
 
     public boolean validateRefreshToken(String token) {
-        return validateToken(token) && isRefreshToken(token);
+        return !validateToken(token) || !isRefreshToken(token);
     }
 
     public Integer getExpirationSecondsFromToken(String token) {

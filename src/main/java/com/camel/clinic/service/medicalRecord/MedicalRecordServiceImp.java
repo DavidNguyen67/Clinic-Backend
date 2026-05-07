@@ -37,8 +37,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
 
     @Override
     public ResponseEntity<?> create(CreateMedicalRecordDto requestBody) {
-        String doctorProfileId = requestBody.getDoctorProfileId();
-        String patientProfileId = requestBody.getPatientProfileId();
         String appointmentId = requestBody.getAppointmentId();
 
         Appointment appointment = (Appointment) medicalRecordServiceInv
@@ -52,6 +50,9 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
         if (appointment.getStatus() != Appointment.AppointmentStatus.COMPLETED) {
             throw new BadRequestException("Cannot create medical record for appointment with status " + appointment.getStatus());
         }
+
+        String doctorProfileId = String.valueOf(appointment.getDoctorProfile().getId());
+        String patientProfileId = String.valueOf(appointment.getPatientProfile().getId());
 
         DoctorProfile doctorProfile = (DoctorProfile) doctorProfileServiceInv
                 .retrieve(doctorProfileId, null)
@@ -68,7 +69,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
         if (patientProfile == null) {
             throw new BadRequestException("Patient profile with ID " + patientProfileId + " not found");
         }
-
 
         MedicalRecord medicalRecord = new MedicalRecord();
         medicalRecord.setDoctorProfile(doctorProfile);
@@ -101,21 +101,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
             throw new BadRequestException("Cannot update medical record for appointment with status " + appointment.getStatus());
         }
 
-        DoctorProfile doctorProfile = (DoctorProfile) doctorProfileServiceInv
-                .retrieve(requestBody.getDoctorProfileId(), null).getBody();
-        if (doctorProfile == null) {
-            throw new BadRequestException("Doctor profile with ID " + requestBody.getDoctorProfileId() + " not found");
-        }
-
-        PatientProfile patientProfile = (PatientProfile) patientProfileServiceInv
-                .retrieve(requestBody.getPatientProfileId(), null).getBody();
-        if (patientProfile == null) {
-            throw new BadRequestException("Patient profile with ID " + requestBody.getPatientProfileId() + " not found");
-        }
-
-
-        medicalRecord.setDoctorProfile(doctorProfile);
-        medicalRecord.setPatientProfile(patientProfile);
         medicalRecord.setAppointment(appointment);
         medicalRecord.setChiefComplaint(requestBody.getChiefComplaint());
         medicalRecord.setVitalSigns(requestBody.getVitalSigns());
