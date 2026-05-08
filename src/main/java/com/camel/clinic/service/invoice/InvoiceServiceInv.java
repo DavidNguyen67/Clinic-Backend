@@ -34,12 +34,12 @@ public class InvoiceServiceInv extends BaseService<Invoice, InvoiceRepository> {
                     }
                     return cb.conjunction();
                 })
-                .and(nestedFieldEqual("appointment", "id", CommonService.parseUuid(queryParams.get("appointmentId"))));
+                .and(nestedFieldEqual("appointment", "id", CommonService.parseToUuid(queryParams.get("appointmentId"))));
     }
 
     public boolean isExistInvoiceByAppointmentId(String appointmentId) {
         Map<String, Object> params = new HashMap<>();
-        params.put("appointmentId", CommonService.parseUuid(appointmentId));
+        params.put("appointmentId", CommonService.parseToUuid(appointmentId));
 
         long count = repository.count(buildSpec(params));
 

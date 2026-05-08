@@ -7,6 +7,9 @@ import com.camel.clinic.entity.DoctorProfile;
 import com.camel.clinic.entity.MedicalRecord;
 import com.camel.clinic.entity.PatientProfile;
 import com.camel.clinic.exception.BadRequestException;
+import com.camel.clinic.repository.AppointmentRepository;
+import com.camel.clinic.service.CommonService;
+import com.camel.clinic.service.appointment.AppointmentServiceInv;
 import com.camel.clinic.service.doctorProfile.DoctorProfileServiceInv;
 import com.camel.clinic.service.patientProfile.PatientProfileServiceInv;
 import lombok.AllArgsConstructor;
@@ -24,6 +27,8 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
     private final DoctorProfileServiceInv doctorProfileServiceInv;
     private final PatientProfileServiceInv patientProfileServiceInv;
     private final MedicalRecordServiceInv medicalRecordServiceInv;
+    private final AppointmentServiceInv appointmentServiceInv;
+    private final AppointmentRepository appointmentRepository;
 
     @Override
     public ResponseEntity<?> count() {
@@ -39,9 +44,8 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
     public ResponseEntity<?> create(CreateMedicalRecordDto requestBody) {
         String appointmentId = requestBody.getAppointmentId();
 
-        Appointment appointment = (Appointment) medicalRecordServiceInv
-                .retrieve(appointmentId, null)
-                .getBody();
+        Appointment appointment = appointmentRepository.findById(CommonService.parseToUuid(appointmentId))
+                .orElseThrow(() -> new BadRequestException("Appointment with ID " + appointmentId + " not found"));
 
         if (appointment == null) {
             throw new BadRequestException("Appointment with ID " + appointmentId + " not found");
@@ -71,6 +75,7 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
         }
 
         MedicalRecord medicalRecord = new MedicalRecord();
+        medicalRecord.setRecordCode(CommonService.generateMedicalRecordCode());
         medicalRecord.setDoctorProfile(doctorProfile);
         medicalRecord.setPatientProfile(patientProfile);
         medicalRecord.setAppointment(appointment);
@@ -78,8 +83,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
         medicalRecord.setVitalSigns(requestBody.getVitalSigns());
         medicalRecord.setDiagnosis(requestBody.getDiagnosis());
         medicalRecord.setTreatmentPlan(requestBody.getTreatmentPlan());
-        medicalRecord.setFollowUpDate(requestBody.getFollowUpDate());
-        medicalRecord.setDoctorNotes(requestBody.getDoctorNotes());
 
         return serviceInv.create(medicalRecord);
     }
@@ -106,8 +109,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
         medicalRecord.setVitalSigns(requestBody.getVitalSigns());
         medicalRecord.setDiagnosis(requestBody.getDiagnosis());
         medicalRecord.setTreatmentPlan(requestBody.getTreatmentPlan());
-        medicalRecord.setFollowUpDate(requestBody.getFollowUpDate());
-        medicalRecord.setDoctorNotes(requestBody.getDoctorNotes());
 
         return serviceInv.update(id, medicalRecord, null);
     }

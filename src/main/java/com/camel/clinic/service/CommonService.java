@@ -109,6 +109,10 @@ public class CommonService {
         return generateCode("INV");
     }
 
+    public static String generateMedicalRecordCode() {
+        return generateCode("REC");
+    }
+
     public static String generateCode(String prefix) {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         String shortCode = uuid.substring(0, 10).toUpperCase();
@@ -116,7 +120,7 @@ public class CommonService {
         return prefix + "-" + shortCode;
     }
 
-    public static <E extends Enum<E>> E parseEnum(Class<E> enumClass, Object value) {
+    public static <E extends Enum<E>> E parseToEnum(Class<E> enumClass, Object value) {
         if (value == null) return null;
         String s = value.toString().trim();
         if (s.isBlank()) return null;
@@ -128,7 +132,7 @@ public class CommonService {
         }
     }
 
-    public static UUID parseUuid(Object value) {
+    public static UUID parseToUuid(Object value) {
         if (value == null) return null;
         String s = value.toString().trim();
         if (s.isBlank()) return null;

@@ -1,12 +1,9 @@
 package com.camel.clinic.dto.medicalRecord;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
 import java.util.Map;
 
 @Getter
@@ -22,14 +19,4 @@ public class CreateMedicalRecordDto {
     private String diagnosis;
 
     private String treatmentPlan;
-
-    @JsonFormat(
-            shape = JsonFormat.Shape.STRING,
-            pattern = "HH:mm dd/MM/yyyy",
-            timezone = "Asia/Ho_Chi_Minh"
-    )
-    @Future(message = "FollowUp date must be in the future")
-    private Date followUpDate;
-
-    private String doctorNotes;
 }

@@ -34,6 +34,6 @@ public class ServicesServiceInv extends BaseService<ClinicService, ServicesRepos
                 .and(fieldEquals("isActive", CommonService.parseBoolean(queryParams.get("isActive"))))
                 .and(fieldLike("name", (String) queryParams.get("name")))
                 .and(fieldLike("slug", (String) queryParams.get("slug")))
-                .and(nestedFieldEqual("specialty", "id", CommonService.parseUuid(queryParams.get("specialtyId"))));
+                .and(nestedFieldEqual("specialty", "id", CommonService.parseToUuid(queryParams.get("specialtyId"))));
     }
 }

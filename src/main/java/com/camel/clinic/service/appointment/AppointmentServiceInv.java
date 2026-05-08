@@ -88,10 +88,10 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                     }
                     return cb.conjunction();
                 })
-                .and(excludeId(CommonService.parseUuid(queryParams.get("excludeId"))))
-                .and(fieldIn("status", CommonService.parseEnum(Appointment.AppointmentStatus.class, queryParams.get("status")), Appointment.AppointmentStatus.class))
-                .and(nestedFieldEqual("doctorProfile", "id", CommonService.parseUuid(queryParams.get("doctorProfileId"))))
-                .and(nestedFieldEqual("patientProfile", "id", CommonService.parseUuid(queryParams.get("patientProfileId"))))
+                .and(excludeId(CommonService.parseToUuid(queryParams.get("excludeId"))))
+                .and(fieldIn("status", CommonService.parseToEnum(Appointment.AppointmentStatus.class, queryParams.get("status")), Appointment.AppointmentStatus.class))
+                .and(nestedFieldEqual("doctorProfile", "id", CommonService.parseToUuid(queryParams.get("doctorProfileId"))))
+                .and(nestedFieldEqual("patientProfile", "id", CommonService.parseToUuid(queryParams.get("patientProfileId"))))
                 .and(fieldOnDate("appointmentDate",
                         CommonService.parseToDate(
                                 (String) queryParams.get("appointmentDate"))))

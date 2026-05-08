@@ -16,6 +16,7 @@ import com.camel.clinic.service.doctorScheduleException.DoctorScheduleExceptionS
 import com.camel.clinic.service.invoice.InvoiceServiceImp;
 import com.camel.clinic.service.invoice.InvoiceServiceInv;
 import com.camel.clinic.service.invoiceItem.InvoiceItemServiceInv;
+import com.camel.clinic.service.medicalRecord.MedicalRecordServiceInv;
 import com.camel.clinic.service.patientProfile.PatientProfileServiceInv;
 import com.camel.clinic.util.AppointmentStatusTransition;
 import com.camel.clinic.util.SecuritiesUtils;
@@ -41,6 +42,7 @@ public class AppointmentServiceImp implements AppointmentService {
     private final InvoiceServiceInv invoiceServiceInv;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemServiceInv invoiceItemServiceInv;
+    private final MedicalRecordServiceInv medicalRecordServiceInv;
 
     @Override
     public ResponseEntity<?> count() {
@@ -172,7 +174,7 @@ public class AppointmentServiceImp implements AppointmentService {
 
         if (targetStatus == CONFIRMED && appointmentEntity.getStatus() != CONFIRMED) {
             String invoiceId = requestBody.getInvoiceId();
-            Invoice invoice = invoiceRepository.findById(CommonService.parseUuid(invoiceId))
+            Invoice invoice = invoiceRepository.findById(CommonService.parseToUuid(invoiceId))
                     .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
 
             List<ClinicService> services = appointmentEntity.getSpecialty().getServices();
@@ -196,7 +198,7 @@ public class AppointmentServiceImp implements AppointmentService {
 
         if (targetStatus == CHECKED_IN && appointmentEntity.getStatus() != CHECKED_IN) {
             String invoiceId = requestBody.getInvoiceId();
-            Invoice invoice = invoiceRepository.findById(CommonService.parseUuid(invoiceId))
+            Invoice invoice = invoiceRepository.findById(CommonService.parseToUuid(invoiceId))
                     .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
 
             invoice.setStatus(Invoice.InvoiceStatus.PENDING);

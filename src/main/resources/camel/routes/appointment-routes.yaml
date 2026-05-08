@@ -10,9 +10,9 @@
           json: { }
 
 - route:
-    id: appointment-list-route
+    id: doctor-appointment-list-route
     from:
-      uri: direct:appointment-list
+      uri: direct:doctor-appointment-list
       steps:
         - process:
             ref: appointmentListProcessor
@@ -20,9 +20,9 @@
             json: { }
 
 - route:
-    id: appointment-count-route
+    id: doctor-appointment-count-route
     from:
-      uri: direct:appointment-count
+      uri: direct:doctor-appointment-count
       steps:
         - process:
             ref: appointmentCountProcessor
@@ -30,9 +30,9 @@
             json: { }
 
 - route:
-    id: appointment-get-route
+    id: doctor-appointment-get-route
     from:
-      uri: direct:appointment-get
+      uri: direct:doctor-appointment-get
       steps:
         - process:
             ref: appointmentGetProcessor
@@ -40,9 +40,9 @@
             json: { }
 
 - route:
-    id: appointment-create-route
+    id: doctor-appointment-create-route
     from:
-      uri: direct:appointment-create
+      uri: direct:doctor-appointment-create
       steps:
         - setHeader:
             name: X-DTO-Class
@@ -57,9 +57,9 @@
             json: { }
 
 - route:
-    id: appointment-update-route
+    id: doctor-appointment-update-route
     from:
-      uri: direct:appointment-update
+      uri: direct:doctor-appointment-update
       steps:
         - setHeader:
             name: X-DTO-Class
@@ -74,9 +74,9 @@
             json: { }
 
 - route:
-    id: appointment-restore-route
+    id: doctor-appointment-restore-route
     from:
-      uri: direct:appointment-restore
+      uri: direct:doctor-appointment-restore
       steps:
         - process:
             ref: appointmentRestoreProcessor
@@ -84,9 +84,9 @@
             json: { }
 
 - route:
-    id: appointment-delete-route
+    id: doctor-appointment-delete-route
     from:
-      uri: direct:appointment-delete
+      uri: direct:doctor-appointment-delete
       steps:
         - process:
             ref: appointmentDeleteProcessor

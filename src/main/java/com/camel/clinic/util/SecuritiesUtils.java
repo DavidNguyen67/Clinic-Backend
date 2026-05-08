@@ -67,7 +67,7 @@ public class SecuritiesUtils {
         if (role != Role.RoleName.PATIENT) return;
 
         String userId = jwtUtil.getUserIdFromToken(getAccessToken(exchange));
-        PatientProfile profile = repo.findByUserId(CommonService.parseUuid(userId))
+        PatientProfile profile = repo.findByUserId(CommonService.parseToUuid(userId))
                 .orElseThrow(() -> new RuntimeException(
                         "Patient profile not found for user ID: " + userId));
 

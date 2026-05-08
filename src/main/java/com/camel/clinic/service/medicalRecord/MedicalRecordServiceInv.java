@@ -4,6 +4,7 @@ import com.camel.clinic.entity.MedicalRecord;
 import com.camel.clinic.repository.MedicalRecordRepository;
 import com.camel.clinic.service.BaseService;
 import com.camel.clinic.service.CommonService;
+import jakarta.persistence.criteria.JoinType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,19 @@ public class MedicalRecordServiceInv extends BaseService<MedicalRecord, MedicalR
     protected Specification<MedicalRecord> buildSpec(Map<String, Object> queryParams) {
         return Specification.<MedicalRecord>unrestricted()
                 .and(notDeleted())
-                .and(nestedFieldEqual("doctorProfile", "id", CommonService.parseUuid(queryParams.get("doctorProfileId"))))
-                .and(nestedFieldEqual("patientProfile", "id", CommonService.parseUuid(queryParams.get("patientProfileId"))));
+                .and((root, query, cb) -> {
+                    assert query != null;
+                    if (!query.getResultType().equals(Long.class)) {
+                        root.fetch("appointment", JoinType.LEFT);
+                    }
+                    return cb.conjunction();
+                })
+                .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("patientProfileId")),
+                        new String[]{"patientProfile", "id"}
+                ))
+                .and(multiFieldOnDate(CommonService.parseToDate((String) queryParams.get("appointmentDate")),
+                        new String[]{"appointment", "appointmentDate"},
+                        new String[]{"createdAt"}
+                ));
     }
 }

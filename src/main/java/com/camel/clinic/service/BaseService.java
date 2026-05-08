@@ -427,7 +427,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
     protected Specification<T> excludeId(Object value) {
         if (value == null) return Specification.unrestricted();
-        UUID excludeUuid = value instanceof UUID u ? u : CommonService.parseUuid(value);
+        UUID excludeUuid = value instanceof UUID u ? u : CommonService.parseToUuid(value);
         return (root, query, cb) -> cb.notEqual(root.get("id"), excludeUuid);
     }
 
@@ -447,6 +447,107 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
                         case 3 -> // nested 2 level: {"doctorProfile", "user", "fullName"}
                                 cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
                         default -> cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
+
+    protected Specification<T> multiFieldEquals(Object value, String[]... fields) {
+        if (value == null) return Specification.unrestricted();
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> switch (f.length) {
+                        case 1 -> cb.equal(root.get(f[0]), value);
+                        case 2 -> cb.equal(root.join(f[0], JoinType.LEFT).get(f[1]), value);
+                        case 3 -> cb.equal(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]), value);
+                        default -> cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
+
+    protected Specification<T> multiFieldLike(String keyword, String[]... fields) {
+        if (keyword == null || keyword.isBlank()) return Specification.unrestricted();
+        String pattern = "%" + keyword.toLowerCase().trim() + "%";
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> switch (f.length) {
+                        case 1 -> cb.like(cb.lower(root.get(f[0])), pattern);
+                        case 2 -> cb.like(cb.lower(root.join(f[0], JoinType.LEFT).get(f[1])), pattern);
+                        case 3 ->
+                                cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
+                        default -> cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
+
+    protected <V> Specification<T> multiFieldIn(List<V> values, String[]... fields) {
+        if (values == null || values.isEmpty()) return Specification.unrestricted();
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> switch (f.length) {
+                        case 1 -> root.get(f[0]).in(values);
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values);
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values);
+                        default -> cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
+
+    protected Specification<T> multiFieldOnDate(Date date, String[]... fields) {
+        if (date == null) return Specification.unrestricted();
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        Date startOfDay = cal.getTime();
+
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        cal.set(Calendar.MILLISECOND, 999);
+        Date endOfDay = cal.getTime();
+
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> {
+                        jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
+                            case 1 -> root.get(f[0]);
+                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                            default -> null;
+                        };
+                        return path != null ? cb.between(path, startOfDay, endOfDay) : cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
+
+    protected Specification<T> multiFieldBetweenDates(Date from, Date to, String[]... fields) {
+        if (from == null && to == null) return Specification.unrestricted();
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> {
+                        jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
+                            case 1 -> root.get(f[0]);
+                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                            default -> null;
+                        };
+                        if (path == null) return cb.conjunction();
+                        if (from == null) return cb.lessThanOrEqualTo(path, to);
+                        if (to == null) return cb.greaterThanOrEqualTo(path, from);
+                        return cb.between(path, from, to);
                     })
                     .toArray(Predicate[]::new);
             return cb.or(predicates);

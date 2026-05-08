@@ -1,20 +1,20 @@
 - rest:
-    path: /v1/admin/appointment
+    path: /v1/doctor/appointment
     post:
       - path: /
-        to: direct:appointment-create
+        to: direct:doctor-appointment-create
     get:
       - path: /
-        to: direct:appointment-list
+        to: direct:doctor-appointment-list
       - path: /count
-        to: direct:appointment-count
+        to: direct:doctor-appointment-count
       - path: /{id}
-        to: direct:appointment-get
+        to: direct:doctor-appointment-get
     patch:
       - path: /{id}
-        to: direct:appointment-update
+        to: direct:doctor-appointment-update
       - path: /restore/{id}
-        to: direct:appointment-restore
+        to: direct:doctor-appointment-restore
     delete:
       - path: /{id}
         to: direct:appointment-delete
@@ -31,15 +31,6 @@
     post:
       - path: /
         to: direct:public-appointment-create
-
-- rest:
-    path: /v1/doctor/appointment
-    get:
-      - path: /
-        to: direct:doctor-appointment-list
-    patch:
-      - path: /{id}
-        to: direct:doctor-appointment-update
 
 - rest:
     path: /v1/staff/appointment

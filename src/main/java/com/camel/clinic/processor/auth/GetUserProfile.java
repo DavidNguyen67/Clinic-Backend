@@ -24,7 +24,7 @@ public class GetUserProfile implements Processor {
     public void process(Exchange exchange) throws Exception {
         String accessToken = SecuritiesUtils.getAccessToken(exchange);
         String userIdStr = jwtUtil.getUserIdFromToken(accessToken);
-        UUID userId = CommonService.parseUuid(userIdStr);
+        UUID userId = CommonService.parseToUuid(userIdStr);
 
         ResponseEntity<?> response = authServiceImp.getUserProfile(userId);
         exchange.getIn().setBody(response);

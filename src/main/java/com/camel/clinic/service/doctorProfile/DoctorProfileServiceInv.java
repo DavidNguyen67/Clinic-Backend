@@ -35,7 +35,7 @@ public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorPr
                 .and(fieldEquals("isFeatured", CommonService.parseBoolean(queryParams.get("isFeatured"))))
                 .and(nestedFieldLike("user", "fullName", (String) queryParams.get("fullName")))
                 .and(nestedFieldLike("specialty", "name", (String) queryParams.get("specialtyName")))
-                .and(nestedFieldEqual("specialty", "id", CommonService.parseUuid(queryParams.get("specialtyId"))));
+                .and(nestedFieldEqual("specialty", "id", CommonService.parseToUuid(queryParams.get("specialtyId"))));
     }
 
 }
