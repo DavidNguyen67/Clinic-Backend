@@ -1,0 +1,124 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: staff-loyalty-transaction-list-route
+    from:
+      uri: direct:staff-loyalty-transaction-list
+      steps:
+        - process:
+            ref: loyaltyTransactionListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-count-route
+    from:
+      uri: direct:staff-loyalty-transaction-count
+      steps:
+        - process:
+            ref: loyaltyTransactionCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-get-route
+    from:
+      uri: direct:staff-loyalty-transaction-get
+      steps:
+        - process:
+            ref: loyaltyTransactionGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-create-route
+    from:
+      uri: direct:staff-loyalty-transaction-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.loyaltyTransaction.CreateLoyaltyTransactionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: loyaltyTransactionCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-update-route
+    from:
+      uri: direct:staff-loyalty-transaction-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.loyaltyTransaction.UpdateLoyaltyTransactionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: loyaltyTransactionUpdateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-restore-route
+    from:
+      uri: direct:staff-loyalty-transaction-restore
+      steps:
+        - process:
+            ref: loyaltyTransactionRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-loyalty-transaction-delete-route
+    from:
+      uri: direct:staff-loyalty-transaction-delete
+      steps:
+        - process:
+            ref: loyaltyTransactionDeleteProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-loyalty-transaction-list-route
+    from:
+      uri: direct:patient-loyalty-transaction-list
+      steps:
+        - process:
+            ref: loyaltyTransactionListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-loyalty-transaction-count-route
+    from:
+      uri: direct:patient-loyalty-transaction-count
+      steps:
+        - process:
+            ref: loyaltyTransactionCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-loyalty-transaction-get-route
+    from:
+      uri: direct:patient-loyalty-transaction-get
+      steps:
+        - process:
+            ref: loyaltyTransactionGetProcessor
+        - marshal:
+            json: { }

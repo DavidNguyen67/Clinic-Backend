@@ -553,4 +553,35 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             return cb.or(predicates);
         };
     }
+
+    protected <E extends Enum<E>> List<E> parseEnumList(Object raw, Class<E> enumClass) {
+        if (raw == null) return List.of();
+
+        // Single string: "EARN"
+        if (raw instanceof String s) {
+            if (s.isBlank()) return List.of();
+            try {
+                return List.of(Enum.valueOf(enumClass, s.toUpperCase().trim()));
+            } catch (IllegalArgumentException e) {
+                return List.of();
+            }
+        }
+
+        // List: ["EARN", "REDEEM"]
+        if (raw instanceof List<?> list) {
+            return list.stream()
+                    .filter(String.class::isInstance)
+                    .map(v -> {
+                        try {
+                            return Enum.valueOf(enumClass, ((String) v).toUpperCase().trim());
+                        } catch (IllegalArgumentException e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+        }
+
+        return List.of();
+    }
 }

@@ -1,0 +1,30 @@
+- rest:
+    path: /v1/staff/loyalty-transaction
+    post:
+      - path: /
+        to: direct:staff-loyalty-transaction-create
+    get:
+      - path: /
+        to: direct:staff-loyalty-transaction-list
+      - path: /count
+        to: direct:staff-loyalty-transaction-count
+      - path: /{id}
+        to: direct:staff-loyalty-transaction-get
+    patch:
+      - path: /{id}
+        to: direct:staff-loyalty-transaction-update
+      - path: /restore/{id}
+        to: direct:staff-loyalty-transaction-restore
+    delete:
+      - path: /{id}
+        to: direct:staff-loyalty-transaction-delete
+
+- rest:
+    path: /v1/patient/loyalty-transaction
+    get:
+      - path: /
+        to: direct:patient-loyalty-transaction-list
+      - path: /count
+        to: direct:patient-loyalty-transaction-count
+      - path: /{id}
+        to: direct:patient-loyalty-transaction-get
