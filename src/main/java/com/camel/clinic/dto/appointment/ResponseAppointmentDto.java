@@ -106,10 +106,6 @@ public class ResponseAppointmentDto {
             res.setClinicServices(services);
         }
 
-        if (a.getInvoices() != null) {
-            res.setInvoices(a.getInvoices());
-        }
-
         return res;
     }
 }

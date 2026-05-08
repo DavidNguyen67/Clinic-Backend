@@ -36,12 +36,12 @@ public class Invoice extends SoftDeletableEntity {
     @Column(name = "invoice_code", unique = true, nullable = false, length = 20)
     private String invoiceCode;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "appointment_id", foreignKey = @ForeignKey(name = "fk_invoice_appointment"))
     @JsonBackReference("appointment-invoices")
     private Appointment appointment;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "patient_id", nullable = false, foreignKey = @ForeignKey(name = "fk_invoice_patient"))
     @NotNull()
     private PatientProfile patientProfile;
@@ -79,7 +79,7 @@ public class Invoice extends SoftDeletableEntity {
     @Column(nullable = false, length = 20)
     private InvoiceStatus status = InvoiceStatus.PENDING;
 
-    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference("invoice-items")
     private List<InvoiceItem> items = new ArrayList<>();
 

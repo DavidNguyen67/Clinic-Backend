@@ -9,11 +9,13 @@ import com.camel.clinic.dto.invoiceItem.UpdateInvoiceItemDto;
 import com.camel.clinic.entity.*;
 import com.camel.clinic.exception.BadRequestException;
 import com.camel.clinic.repository.AppointmentRepository;
+import com.camel.clinic.repository.InvoiceRepository;
 import com.camel.clinic.service.CommonService;
 import com.camel.clinic.service.doctorProfile.DoctorProfileServiceInv;
 import com.camel.clinic.service.doctorScheduleException.DoctorScheduleExceptionServiceInv;
 import com.camel.clinic.service.invoice.InvoiceServiceImp;
 import com.camel.clinic.service.invoice.InvoiceServiceInv;
+import com.camel.clinic.service.invoiceItem.InvoiceItemServiceInv;
 import com.camel.clinic.service.patientProfile.PatientProfileServiceInv;
 import com.camel.clinic.util.AppointmentStatusTransition;
 import com.camel.clinic.util.SecuritiesUtils;
@@ -37,6 +39,8 @@ public class AppointmentServiceImp implements AppointmentService {
     private final InvoiceServiceImp invoiceServiceImp;
     private final AppointmentRepository appointmentRepository;
     private final InvoiceServiceInv invoiceServiceInv;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemServiceInv invoiceItemServiceInv;
 
     @Override
     public ResponseEntity<?> count() {
@@ -99,10 +103,10 @@ public class AppointmentServiceImp implements AppointmentService {
         Appointment saved = (Appointment) serviceInv.create(appointment).getBody();
 
         CreateInvoiceDto createInvoiceDto = new CreateInvoiceDto();
+        assert saved != null;
         createInvoiceDto.setAppointmentId(saved.getId().toString());
         createInvoiceDto.setInvoiceDate(appointmentDate);
 
-        createInvoiceDto.setItems(List.of());
         invoiceServiceImp.create(createInvoiceDto);
 
         return ResponseEntity.ok(saved);
@@ -168,9 +172,8 @@ public class AppointmentServiceImp implements AppointmentService {
 
         if (targetStatus == CONFIRMED && appointmentEntity.getStatus() != CONFIRMED) {
             String invoiceId = requestBody.getInvoiceId();
-            Invoice invoice = invoiceServiceInv
-                    .retrieve(invoiceId, null)
-                    .getBody() instanceof Invoice inv ? inv : null;
+            Invoice invoice = invoiceRepository.findById(CommonService.parseUuid(invoiceId))
+                    .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
 
             List<ClinicService> services = appointmentEntity.getSpecialty().getServices();
 
@@ -189,6 +192,15 @@ public class AppointmentServiceImp implements AppointmentService {
             invoiceRequest.setItems(items);
 
             invoiceServiceImp.update(invoice.getId().toString(), invoiceRequest);
+        }
+
+        if (targetStatus == CHECKED_IN && appointmentEntity.getStatus() != CHECKED_IN) {
+            String invoiceId = requestBody.getInvoiceId();
+            Invoice invoice = invoiceRepository.findById(CommonService.parseUuid(invoiceId))
+                    .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
+
+            invoice.setStatus(Invoice.InvoiceStatus.PENDING);
+            invoiceRepository.save(invoice);
         }
 
         if (doctorChanged) {
@@ -259,3 +271,4 @@ public class AppointmentServiceImp implements AppointmentService {
                 || dto.getNotes() != null;
     }
 }
+

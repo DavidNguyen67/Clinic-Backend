@@ -24,15 +24,17 @@ public class InvoiceServiceInv extends BaseService<Invoice, InvoiceRepository> {
     protected Specification<Invoice> buildSpec(Map<String, Object> queryParams) {
         return Specification.<Invoice>unrestricted()
                 .and(notDeleted())
-                .and((root, query, criteriaBuilder) -> {
-                    if (queryParams.containsKey("appointmentId")) {
-                        return criteriaBuilder.equal(
-                                root.join("appointment", JoinType.INNER).get("id"),
-                                queryParams.get("appointmentId")
-                        );
+                .and((root, query, cb) -> {
+                    assert query != null;
+                    if (!query.getResultType().equals(Long.class)) {
+                        root.fetch("patientProfile", JoinType.LEFT);
+                        root.fetch("items", JoinType.LEFT);
+
+                        query.distinct(true);
                     }
-                    return null;
-                });
+                    return cb.conjunction();
+                })
+                .and(nestedFieldEqual("appointment", "id", CommonService.parseUuid(queryParams.get("appointmentId"))));
     }
 
     public boolean isExistInvoiceByAppointmentId(String appointmentId) {

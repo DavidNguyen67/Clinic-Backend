@@ -1,0 +1,124 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: invoice-list-route
+    from:
+      uri: direct:invoice-list
+      steps:
+        - process:
+            ref: invoiceListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-count-route
+    from:
+      uri: direct:invoice-count
+      steps:
+        - process:
+            ref: invoiceCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-get-route
+    from:
+      uri: direct:invoice-get
+      steps:
+        - process:
+            ref: invoiceGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-create-route
+    from:
+      uri: direct:invoice-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.invoice.CreateFaqDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: invoiceCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-update-route
+    from:
+      uri: direct:invoice-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.invoice.UpdateFaqDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: invoiceUpdateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-restore-route
+    from:
+      uri: direct:invoice-restore
+      steps:
+        - process:
+            ref: invoiceRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: invoice-delete-route
+    from:
+      uri: direct:invoice-delete
+      steps:
+        - process:
+            ref: invoiceDeleteProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-invoice-list-route
+    from:
+      uri: direct:patient-invoice-list
+      steps:
+        - process:
+            ref: invoiceListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-invoice-count-route
+    from:
+      uri: direct:patient-invoice-count
+      steps:
+        - process:
+            ref: invoiceCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-invoice-get-route
+    from:
+      uri: direct:patient-invoice-get
+      steps:
+        - process:
+            ref: invoiceGetProcessor
+        - marshal:
+            json: { }
