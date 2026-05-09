@@ -2,7 +2,7 @@ package com.camel.clinic.dto.loyaltyTransaction;
 
 import com.camel.clinic.entity.LoyaltyTransaction.TransactionType;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -32,14 +32,11 @@ public class CreateLoyaltyTransactionDto {
 
     private String description;
 
-    @NotNull(message = "Balance after is required")
-    @Min(value = 0, message = "Balance after must be >= 0")
-    private Integer balanceAfter;
-
     @JsonFormat(
             shape = JsonFormat.Shape.STRING,
             pattern = "dd/MM/yyyy",
             timezone = "Asia/Ho_Chi_Minh"
     )
+    @Future(message = "Expiration date must be in the future")
     private Date expiresAt;
 }

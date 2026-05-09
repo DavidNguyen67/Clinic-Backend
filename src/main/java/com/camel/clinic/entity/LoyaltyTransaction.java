@@ -57,6 +57,16 @@ public class LoyaltyTransaction extends SoftDeletableEntity {
     )
     private Date expiresAt;
 
+    public void calculateBalanceAfter(Integer currentBalance) {
+        if (transactionType == TransactionType.EARN) {
+            this.balanceAfter = currentBalance + points;
+        } else if (transactionType == TransactionType.REDEEM || transactionType == TransactionType.EXPIRE) {
+            this.balanceAfter = currentBalance - points;
+        } else if (transactionType == TransactionType.ADJUSTMENT) {
+            this.balanceAfter = currentBalance + points;
+        }
+    }
+
     public enum TransactionType {
         EARN,
         REDEEM,

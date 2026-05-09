@@ -22,8 +22,6 @@ public class UpdateLoyaltyTransactionDto {
 
     private String description;
 
-    private Integer balanceAfter;
-
     @JsonFormat(
             shape = JsonFormat.Shape.STRING,
             pattern = "dd/MM/yyyy",

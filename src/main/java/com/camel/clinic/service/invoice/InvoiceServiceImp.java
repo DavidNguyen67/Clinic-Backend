@@ -3,13 +3,16 @@ package com.camel.clinic.service.invoice;
 import com.camel.clinic.dto.ApiPaged;
 import com.camel.clinic.dto.invoice.CreateInvoiceDto;
 import com.camel.clinic.dto.invoice.UpdateInvoiceDto;
+import com.camel.clinic.dto.loyaltyTransaction.CreateLoyaltyTransactionDto;
 import com.camel.clinic.entity.Appointment;
 import com.camel.clinic.entity.Invoice;
 import com.camel.clinic.entity.InvoiceItem;
+import com.camel.clinic.entity.LoyaltyTransaction;
 import com.camel.clinic.exception.BadRequestException;
 import com.camel.clinic.repository.AppointmentRepository;
 import com.camel.clinic.service.CommonService;
 import com.camel.clinic.service.invoiceItem.InvoiceItemServiceInv;
+import com.camel.clinic.service.loyaltyTransaction.LoyaltyTransactionServiceImp;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,21 @@ public class InvoiceServiceImp implements InvoiceService {
     private final InvoiceServiceInv serviceInv;
     private final InvoiceItemServiceInv invoiceItemServiceInv;
     private final AppointmentRepository appointmentRepository;
+    private final LoyaltyTransactionServiceImp loyaltyTransactionServiceImp;
+
+    private static CreateLoyaltyTransactionDto getCreateLoyaltyTransactionDto(Invoice invoice) {
+        BigDecimal paid = invoice.getPatientPaid();
+
+        Integer pointEarned = paid.divideToIntegralValue(BigDecimal.valueOf(10000)).intValue();
+        CreateLoyaltyTransactionDto loyaltyTransactionDto = new CreateLoyaltyTransactionDto();
+        loyaltyTransactionDto.setPatientProfileId(invoice.getPatientProfile().getId().toString());
+        loyaltyTransactionDto.setTransactionType(LoyaltyTransaction.TransactionType.EARN);
+        loyaltyTransactionDto.setPoints(pointEarned);
+        loyaltyTransactionDto.setReferenceType("INVOICE");
+        loyaltyTransactionDto.setReferenceId(invoice.getId());
+        loyaltyTransactionDto.setDescription("Earned " + pointEarned + " points from invoice " + invoice.getInvoiceCode());
+        return loyaltyTransactionDto;
+    }
 
     @Override
     public ResponseEntity<?> count() {
@@ -101,7 +119,6 @@ public class InvoiceServiceImp implements InvoiceService {
         invoice.setPatientPaid(requestBody.getPatientPaid());
 
         if (isFromProcessor) {
-//            List<InvoiceItem> itemsList =
             Map<String, Object> params = Map.of("invoiceId", id);
             ResponseEntity<ApiPaged<?>> itemsPage =
                     (ResponseEntity<ApiPaged<?>>) invoiceItemServiceInv.list(params);
@@ -136,10 +153,11 @@ public class InvoiceServiceImp implements InvoiceService {
                         .contains(invoice.getStatus()))) {
             invoice.setStatus(Invoice.InvoiceStatus.PAID);
         }
+        CreateLoyaltyTransactionDto loyaltyTransactionDto = getCreateLoyaltyTransactionDto(invoice);
+        loyaltyTransactionServiceImp.create(loyaltyTransactionDto);
 
         return serviceInv.update(id, invoice, null);
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
