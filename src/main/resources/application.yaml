@@ -2,7 +2,7 @@ spring:
   application:
     name: clinic
   datasource:
-    url: jdbc:postgresql://47.129.48.184:5432/clinic_postgres
+    url: jdbc:postgresql://159.223.41.100:5432/clinic_postgres
     username: davidnguyen67dev
     password: ThZLSkGbHn7koUctpL26ARzGK-maNiKDC-_xs9i-6J0
     driver-class-name: org.postgresql.Driver
@@ -21,12 +21,12 @@ spring:
     clean-disabled: true
     user: davidnguyen67dev
     password: ThZLSkGbHn7koUctpL26ARzGK-maNiKDC-_xs9i-6J0
-    url: jdbc:postgresql://47.129.48.184:5432/clinic_postgres
+    url: jdbc:postgresql://159.223.41.100:5432/clinic_postgres
     schemas:
       - public
   data:
     redis:
-      host: 47.129.48.184
+      host: 159.223.41.100
       port: 6379
       password: QpHCCS28JmdwWcr8g4-lwS8nWc0Lz-abTn0KJ0Brv2g
   jpa:

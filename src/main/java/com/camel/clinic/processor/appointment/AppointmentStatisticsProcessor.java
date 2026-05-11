@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-@Component("appointmentCalculateStatisticsProcessor")
+@Component("appointmentStatisticsProcessor")
 @AllArgsConstructor
-public class AppointmentCalculateStatisticsProcessor implements Processor {
+public class AppointmentStatisticsProcessor implements Processor {
     private final AppointmentServiceImp serviceImp;
     private final PatientProfileRepository patientProfileRepository;
     private final DoctorProfileRepository doctorProfileRepository;
