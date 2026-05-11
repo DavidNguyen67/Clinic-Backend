@@ -104,38 +104,18 @@
             json: { }
 
 - route:
-    id: patient-invoice-count-route
+    id: patient-invoice-create-route
     from:
-      uri: direct:patient-invoice-count
-      steps:
-        - process:
-            ref: invoiceCountProcessor
-        - marshal:
-            json: { }
-
-- route:
-    id: patient-invoice-get-route
-    from:
-      uri: direct:patient-invoice-get
-      steps:
-        - process:
-            ref: invoiceGetProcessor
-        - marshal:
-            json: { }
-
-- route:
-    id: patient-invoice-update-route
-    from:
-      uri: direct:patient-invoice-update
+      uri: direct:patient-invoice-create
       steps:
         - setHeader:
             name: X-DTO-Class
-            constant: com.camel.clinic.dto.invoice.UpdateInvoiceDto
+            constant: com.camel.clinic.dto.invoice.CreateInvoiceDto
         - process:
             ref: requestDeserializerProcessor
         - process:
             ref: validationProcessor
         - process:
-            ref: invoiceUpdateProcessor
+            ref: invoiceCreateProcessor
         - marshal:
             json: { }

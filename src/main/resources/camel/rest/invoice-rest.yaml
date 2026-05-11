@@ -21,6 +21,9 @@
 
 - rest:
     path: /v1/patient/invoice
+    post:
+      - path: /
+        to: direct:patient-invoice-create
     get:
       - path: /
         to: direct:patient-invoice-list

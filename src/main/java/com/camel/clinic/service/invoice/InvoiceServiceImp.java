@@ -82,20 +82,20 @@ public class InvoiceServiceImp implements InvoiceService {
             );
         }
 
-        boolean existsInvoice = serviceInv.isExistInvoiceByAppointmentId(requestBody.getAppointmentId());
-
-        if (existsInvoice) {
-            throw new BadRequestException(
-                    "Invoice already exists for this appointment"
-            );
-        }
+//        boolean existsInvoice = serviceInv.isExistInvoiceByAppointmentId(requestBody.getAppointmentId());
+//
+//        if (existsInvoice) {
+//            throw new BadRequestException(
+//                    "Invoice already exists for this appointment"
+//            );
+//        }
 
         Invoice invoice = new Invoice();
 
         invoice.setInvoiceCode(CommonService.generateInvoiceCode());
         invoice.setAppointment(appointmentEntity);
         invoice.setPatientProfile(appointmentEntity.getPatientProfile());
-        invoice.setInvoiceDate(requestBody.getInvoiceDate());
+        invoice.setInvoiceDate(CommonService.getCurrentDate());
         invoice.setStatus(Invoice.InvoiceStatus.DRAFT);
         invoice.setDiscountAmount(BigDecimal.ZERO);
         invoice.setInsuranceCovered(BigDecimal.ZERO);
@@ -141,7 +141,7 @@ public class InvoiceServiceImp implements InvoiceService {
                     })
                     .toList();
 
-            invoiceItemServiceInv.bulkCreate(itemsList);
+            invoiceItemServiceInv.bulkUpsert(itemsList);
 
             invoice.setItems(itemsList);
             invoice.calculateTotals();

@@ -8,6 +8,8 @@
         to: direct:doctor-appointment-list
       - path: /count
         to: direct:doctor-appointment-count
+      - path: /statistics
+        to: direct:doctor-appointment-statistics
       - path: /{id}
         to: direct:doctor-appointment-get
     patch:
@@ -17,35 +19,31 @@
         to: direct:doctor-appointment-restore
     delete:
       - path: /{id}
-        to: direct:appointment-delete
+        to: direct:doctor-appointment-delete
 
 - rest:
     path: /v1/public/appointment
     get:
       - path: /
         to: direct:public-appointment-list
-      - path: /count
-        to: direct:public-appointment-count
-      - path: /{id}
-        to: direct:public-appointment-get
-    post:
-      - path: /
-        to: direct:public-appointment-create
 
 - rest:
     path: /v1/staff/appointment
     get:
       - path: /
         to: direct:staff-appointment-list
-    patch:
-      - path: /{id}
-        to: direct:staff-appointment-update
-
+      - path: /statistics
+        to: direct:staff-appointment-statistics
 - rest:
     path: /v1/patient/appointment
     get:
       - path: /
         to: direct:patient-appointment-list
+      - path: /statistics
+        to: direct:patient-appointment-statistics
     patch:
       - path: /{id}
         to: direct:patient-appointment-update
+    post:
+      - path: /
+        to: direct:patient-appointment-create

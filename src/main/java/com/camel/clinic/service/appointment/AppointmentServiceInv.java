@@ -1,6 +1,7 @@
 package com.camel.clinic.service.appointment;
 
 import com.camel.clinic.dto.ApiPaged;
+import com.camel.clinic.dto.appointment.AppointmentStatisticsDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
 import com.camel.clinic.entity.Appointment;
 import com.camel.clinic.entity.Specialty;
@@ -15,10 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -70,6 +68,82 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
         return base;
     }
 
+    public ResponseEntity<?> calculateStatistics(Map<String, Object> queryParams) {
+        String inputDateStr = (String) queryParams.get("appointmentDate");
+        Date inputDate = inputDateStr != null
+                ? CommonService.parseToDate(inputDateStr, "dd/MM/yyyy")
+                : CommonService.getCurrentDate();
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(inputDate);
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        Date monthStart = cal.getTime();
+
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        Date monthEnd = cal.getTime();
+
+        cal.setTime(inputDate);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        Date todayStart = cal.getTime();
+
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        Date todayEnd = cal.getTime();
+
+        Map<String, Object> monthParams = new HashMap<>(queryParams);
+        monthParams.put("fromDate", CommonService.formatDate(monthStart, "HH:mm dd/MM/yyyy"));
+        monthParams.put("toDate", CommonService.formatDate(monthEnd, "HH:mm dd/MM/yyyy"));
+        monthParams.remove("appointmentDate");
+
+        Map<String, Object> todayParams = new HashMap<>(queryParams);
+        todayParams.put("fromDate", CommonService.formatDate(todayStart, "HH:mm dd/MM/yyyy"));
+        todayParams.put("toDate", CommonService.formatDate(todayEnd, "HH:mm dd/MM/yyyy"));
+        todayParams.remove("appointmentDate");
+        long todayCount = repository.count(buildSpec(todayParams));
+
+        Date tomorrow = new Date(todayEnd.getTime() + 60_000L);
+        Map<String, Object> upcomingParams = new HashMap<>(queryParams);
+        upcomingParams.put("fromDate", CommonService.formatDate(tomorrow, "HH:mm dd/MM/yyyy"));
+        upcomingParams.put("toDate", CommonService.formatDate(monthEnd, "HH:mm dd/MM/yyyy"));
+        upcomingParams.remove("appointmentDate");
+        long upcomingCount = repository.count(buildSpec(upcomingParams));
+
+        long pendingCount = countByStatus(Appointment.AppointmentStatus.PENDING, monthParams);
+        long confirmedCount = countByStatus(Appointment.AppointmentStatus.CONFIRMED, monthParams);
+        long checkedInCount = countByStatus(Appointment.AppointmentStatus.CHECKED_IN, monthParams);
+        long inProgressCount = countByStatus(Appointment.AppointmentStatus.IN_PROGRESS, monthParams);
+        long completedCount = countByStatus(Appointment.AppointmentStatus.COMPLETED, monthParams);
+        long cancelledCount = countByStatus(Appointment.AppointmentStatus.CANCELLED, monthParams);
+        long noShowCount = countByStatus(Appointment.AppointmentStatus.NO_SHOW, monthParams);
+
+        AppointmentStatisticsDto dto = AppointmentStatisticsDto.builder()
+                .todayCount(todayCount)
+                .upcomingCount(upcomingCount)
+                .pendingCount(pendingCount)
+                .confirmedCount(confirmedCount)
+                .checkedInCount(checkedInCount)
+                .inProgressCount(inProgressCount)
+                .completedCount(completedCount)
+                .cancelledCount(cancelledCount)
+                .noShowCount(noShowCount)
+                .build();
+
+        return ResponseEntity.ok(dto);
+    }
+
+    private long countByStatus(Appointment.AppointmentStatus status, Map<String, Object> baseParams) {
+        Map<String, Object> params = new HashMap<>(baseParams);
+        params.put("status", status.name());
+        return repository.count(buildSpec(params));
+    }
+
     @Override
     protected Specification<Appointment> buildSpec(Map<String, Object> queryParams) {
         return Specification.<Appointment>unrestricted()
@@ -95,10 +169,11 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                 .and(fieldOnDate("appointmentDate",
                         CommonService.parseToDate(
                                 (String) queryParams.get("appointmentDate"))))
-                .and(fieldBetweenDates("appointmentDate",
+                .and(multiFieldBetweenDates(
                         CommonService.parseToDate((String) queryParams.get("fromDate"), "HH:mm dd/MM/yyyy"),
-                        CommonService.parseToDate((String) queryParams.get("toDate"), "HH:mm dd/MM/yyyy")
-                ))
+                        CommonService.parseToDate((String) queryParams.get("toDate"), "HH:mm dd/MM/yyyy"),
+                        new String[]{"appointmentDate"})
+                )
                 .and(keywordSpec(
                         (String) queryParams.get("keyword"),
                         new String[][]{

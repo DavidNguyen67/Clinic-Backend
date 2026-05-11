@@ -9,7 +9,6 @@ import com.camel.clinic.entity.PatientProfile;
 import com.camel.clinic.exception.BadRequestException;
 import com.camel.clinic.repository.AppointmentRepository;
 import com.camel.clinic.service.CommonService;
-import com.camel.clinic.service.appointment.AppointmentServiceInv;
 import com.camel.clinic.service.doctorProfile.DoctorProfileServiceInv;
 import com.camel.clinic.service.patientProfile.PatientProfileServiceInv;
 import lombok.AllArgsConstructor;
@@ -27,7 +26,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
     private final DoctorProfileServiceInv doctorProfileServiceInv;
     private final PatientProfileServiceInv patientProfileServiceInv;
     private final MedicalRecordServiceInv medicalRecordServiceInv;
-    private final AppointmentServiceInv appointmentServiceInv;
     private final AppointmentRepository appointmentRepository;
 
     @Override
@@ -46,10 +44,6 @@ public class MedicalRecordServiceImp implements MedicalRecordService {
 
         Appointment appointment = appointmentRepository.findById(CommonService.parseToUuid(appointmentId))
                 .orElseThrow(() -> new BadRequestException("Appointment with ID " + appointmentId + " not found"));
-
-        if (appointment == null) {
-            throw new BadRequestException("Appointment with ID " + appointmentId + " not found");
-        }
 
         if (appointment.getStatus() != Appointment.AppointmentStatus.COMPLETED) {
             throw new BadRequestException("Cannot create medical record for appointment with status " + appointment.getStatus());

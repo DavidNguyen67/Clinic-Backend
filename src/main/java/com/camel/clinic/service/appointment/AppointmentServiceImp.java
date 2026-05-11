@@ -3,7 +3,6 @@ package com.camel.clinic.service.appointment;
 import com.camel.clinic.dto.appointment.CreateAppointmentDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
 import com.camel.clinic.dto.appointment.UpdateAppointmentDto;
-import com.camel.clinic.dto.invoice.CreateInvoiceDto;
 import com.camel.clinic.dto.invoice.UpdateInvoiceDto;
 import com.camel.clinic.dto.invoiceItem.UpdateInvoiceItemDto;
 import com.camel.clinic.entity.*;
@@ -14,9 +13,6 @@ import com.camel.clinic.service.CommonService;
 import com.camel.clinic.service.doctorProfile.DoctorProfileServiceInv;
 import com.camel.clinic.service.doctorScheduleException.DoctorScheduleExceptionServiceInv;
 import com.camel.clinic.service.invoice.InvoiceServiceImp;
-import com.camel.clinic.service.invoice.InvoiceServiceInv;
-import com.camel.clinic.service.invoiceItem.InvoiceItemServiceInv;
-import com.camel.clinic.service.medicalRecord.MedicalRecordServiceInv;
 import com.camel.clinic.service.patientProfile.PatientProfileServiceInv;
 import com.camel.clinic.util.AppointmentStatusTransition;
 import com.camel.clinic.util.SecuritiesUtils;
@@ -39,10 +35,11 @@ public class AppointmentServiceImp implements AppointmentService {
     private final PatientProfileServiceInv patientProfileServiceInv;
     private final InvoiceServiceImp invoiceServiceImp;
     private final AppointmentRepository appointmentRepository;
-    private final InvoiceServiceInv invoiceServiceInv;
     private final InvoiceRepository invoiceRepository;
-    private final InvoiceItemServiceInv invoiceItemServiceInv;
-    private final MedicalRecordServiceInv medicalRecordServiceInv;
+
+    public ResponseEntity<?> calculateStatistics(Map<String, Object> queryParams) {
+        return serviceInv.calculateStatistics(queryParams);
+    }
 
     @Override
     public ResponseEntity<?> count() {
@@ -102,16 +99,7 @@ public class AppointmentServiceImp implements AppointmentService {
         appointment.setNotes(requestBody.getNotes());
         appointment.setStatus(PENDING);
 
-        Appointment saved = (Appointment) serviceInv.create(appointment).getBody();
-
-        CreateInvoiceDto createInvoiceDto = new CreateInvoiceDto();
-        assert saved != null;
-        createInvoiceDto.setAppointmentId(saved.getId().toString());
-        createInvoiceDto.setInvoiceDate(appointmentDate);
-
-        invoiceServiceImp.create(createInvoiceDto);
-
-        return ResponseEntity.ok(saved);
+        return serviceInv.create(appointment);
     }
 
     @Override

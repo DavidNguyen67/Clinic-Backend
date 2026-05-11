@@ -4,7 +4,6 @@ import com.camel.clinic.dto.ApiPaged;
 import com.camel.clinic.entity.SoftDeletableEntity;
 import com.camel.clinic.exception.NotFoundException;
 import com.camel.clinic.util.MapperUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.persistence.criteria.JoinType;
@@ -96,7 +95,57 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // ==================== LIST ====================
+    /**
+     * Tạo hoặc cập nhật nhiều bản ghi cùng lúc (Upsert)
+     * - Có ID và tìm thấy trong DB → UPDATE
+     * - Không có ID hoặc không tìm thấy → CREATE
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ResponseEntity<?> bulkUpsert(List<T> dataList) {
+        try {
+            if (dataList == null || dataList.isEmpty()) {
+                return ResponseEntity.badRequest().body("Request body must not be empty");
+            }
+
+            // 1. Tách các ID có giá trị (dùng SoftDeletableEntity.getId())
+            List<UUID> incomingIds = dataList.stream()
+                    .map(SoftDeletableEntity::getId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+            // 2. Batch fetch một lần — tránh N+1
+            Map<UUID, T> existingMap = repository.findAllById(incomingIds)
+                    .stream()
+                    .collect(Collectors.toMap(SoftDeletableEntity::getId, e -> e));
+
+            // 3. Merge từng item
+            List<T> toSave = dataList.stream()
+                    .map(data -> {
+                        UUID id = data.getId();
+                        T target = (id != null && existingMap.containsKey(id))
+                                ? existingMap.get(id)   // UPDATE: merge vào entity hiện tại
+                                : entityFactory.get();  // CREATE: tạo instance mới
+                        MapperUtils.mergeDataSourceToTarget(data, target);
+                        return target;
+                    })
+                    .toList();
+
+            List<T> saved = repository.saveAll(toSave);
+
+            long updatedCount = saved.stream()
+                    .filter(e -> existingMap.containsKey(e.getId()))
+                    .count();
+            log.info("Bulk upsert: {} total ({} updated, {} created)",
+                    saved.size(), updatedCount, saved.size() - updatedCount);
+
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(saved);
+
+        } catch (Exception e) {
+            log.error("Error bulk upserting entities: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to bulk upsert entities: " + e.getMessage(), e);
+        }
+    }
 
     /**
      * Lấy danh sách bản ghi có hỗ trợ phân trang và sắp xếp
@@ -144,8 +193,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
     /**
      * Đếm tổng số bản ghi
-     *
-     * @return tổng số bản ghi
      */
     @Transactional(readOnly = true)
     public ResponseEntity<?> count() {
@@ -162,12 +209,8 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // ==================== RETRIEVE ====================
-
     /**
      * Lấy bản ghi theo id
-     *
-     * @param fields comma-separated tên các field muốn trả về, null = trả hết
      */
     @Transactional(readOnly = true)
     public ResponseEntity<?> retrieve(String id, String fields) {
@@ -185,8 +228,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             throw new RuntimeException("Failed to retrieve entity: " + e.getMessage(), e);
         }
     }
-
-    // ==================== UPDATE ====================
 
     /**
      * Cập nhật bản ghi theo id (partial update — chỉ ghi đè field không null)
@@ -215,8 +256,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // ==================== DELETE ====================
-
     /**
      * Xóa bản ghi theo id
      */
@@ -238,8 +277,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             throw new RuntimeException("Failed to delete entity: " + e.getMessage(), e);
         }
     }
-
-    // ==================== RESTORE ====================
 
     /**
      * Khôi phục bản ghi đã bị soft-delete
@@ -269,8 +306,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // ==================== GET BY IDS ====================
-
     /**
      * Lấy nhiều bản ghi theo danh sách id
      */
@@ -296,8 +331,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // ==================== HELPERS ====================
-
     protected Specification<T> fieldEquals(String fieldName, Object value) {
         if (value == null) return null;
         if (value instanceof String s && s.isBlank()) return null;
@@ -315,7 +348,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
      * Nếu fields == null hoặc rỗng thì trả về toàn bộ entity.
      */
     @SuppressWarnings("unchecked")
-    protected Object filterFields(T entity, String fields) throws JsonProcessingException {
+    protected Object filterFields(T entity, String fields) {
         if (fields == null || fields.isBlank()) {
             return entity;
         }
@@ -334,7 +367,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
         return filtered;
     }
-
 
     protected Specification<T> buildSpec(Map<String, Object> queryParams) {
         return buildBaseSpec(queryParams); // default: chỉ filter notDeleted + status
@@ -371,7 +403,6 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
     }
 
-    // Trong BaseService hoặc 1 class SpecificationUtils riêng
     protected <T, V> Specification<T> fieldIn(String fieldName, Object raw, Class<V> type) {
         if (raw == null) return Specification.unrestricted();
 

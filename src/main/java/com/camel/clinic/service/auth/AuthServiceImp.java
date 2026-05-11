@@ -142,7 +142,8 @@ public class AuthServiceImp implements AuthService {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new BadRequestException("refreshToken is required");
         }
-        if (!jwtUtil.validateRefreshToken(refreshToken)) {
+        boolean isValid = jwtUtil.validateRefreshToken(refreshToken);
+        if (!isValid) {
             throw new BadRequestException("Invalid refresh token");
         }
 

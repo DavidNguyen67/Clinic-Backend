@@ -219,7 +219,17 @@ public class JwtUtil {
     }
 
     public boolean validateRefreshToken(String token) {
-        return !validateToken(token) || !isRefreshToken(token);
+        boolean isValid = validateToken(token);
+        boolean isRefresh = isRefreshToken(token);
+        if (!isValid) {
+            log.warn("Token validation failed");
+            return false;
+        }
+        if (!isRefresh) {
+            log.warn("Token is not a refresh token");
+            return false;
+        }
+        return true;
     }
 
     public Integer getExpirationSecondsFromToken(String token) {
