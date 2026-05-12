@@ -15,6 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -124,5 +125,10 @@ public class SpecialtyServiceInv extends BaseService<Specialty, SpecialtyReposit
         );
 
         return ResponseEntity.ok(paged);
+    }
+
+    public long countSpecialties(Map<String, Object> baseParams) {
+        Map<String, Object> params = new HashMap<>(baseParams);
+        return repository.count(buildSpec(params));
     }
 }

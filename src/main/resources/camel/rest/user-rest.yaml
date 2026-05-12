@@ -12,3 +12,9 @@
         to: direct:user-statistics
       - path: /{id}
         to: direct:user-get
+
+- rest:
+    path: /v1/public/user
+    get:
+      - path: /statistics
+        to: direct:public-user-statistics

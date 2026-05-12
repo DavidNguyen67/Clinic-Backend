@@ -30,5 +30,7 @@
         to: direct:public-specialty-list-with-doctor-count
       - path: /count
         to: direct:public-specialty-count
+      - path: /statistics
+        to: direct:public-specialty-statistics
       - path: /{id}
         to: direct:public-specialty-get

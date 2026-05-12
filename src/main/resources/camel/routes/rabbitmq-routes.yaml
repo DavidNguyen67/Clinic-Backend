@@ -1,0 +1,26 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: mq-email-consumer-route
+    from:
+      uri: "spring-rabbitmq://clinic.notification.exchange?queues=clinic.email.queue&routingKey=clinic.email&autoDeclare=false"
+      steps:
+        - setProperty:
+            name: emailPayload
+            expression:
+              simple: "${body}"
+
+        - process:
+            ref: htmlTemplateProcessor
+
+        - process:
+            ref: mailSenderProcessor

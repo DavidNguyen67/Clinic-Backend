@@ -30,6 +30,16 @@
             json: { }
 
 - route:
+    id: public-specialty-statistics-route
+    from:
+      uri: direct:public-specialty-statistics
+      steps:
+        - process:
+            ref: specialtyStatisticsProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: specialty-count-route
     from:
       uri: direct:specialty-count

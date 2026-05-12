@@ -12,6 +12,8 @@ public interface SpecialtyService {
 
     ResponseEntity<?> count();
 
+    ResponseEntity<?> calculateStatistics(Map<String, Object> queryParams);
+
     ResponseEntity<?> retrieve(String id);
 
     ResponseEntity<?> create(CreateSpecialtyDto requestBody);

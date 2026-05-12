@@ -8,9 +8,12 @@ import com.camel.clinic.exception.NotFoundException;
 import com.camel.clinic.service.CommonService;
 import com.camel.clinic.service.EmailUniqueService;
 import com.camel.clinic.util.JwtUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.ProducerTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,6 +40,8 @@ public class AuthServiceImp implements AuthService {
     private final EmailService emailService;
     private final EmailUniqueService emailUniqueService;
     private final JwtUtil jwtUtil;
+    private final ProducerTemplate producerTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -95,6 +100,7 @@ public class AuthServiceImp implements AuthService {
                 throw new BadRequestException("Email already exists");
             }
 
+
             if (authServiceInv.findByPhone(req.getPhone()).isPresent()) {
                 throw new BadRequestException("Phone number already exists");
             }
@@ -115,7 +121,6 @@ public class AuthServiceImp implements AuthService {
             String refreshToken = jwtUtil.generateRefreshToken(user.getId());
             tokenStoreService.storeRefreshTokenHash(user.getId().toString(), refreshToken);
 
-//        TODO: Send welcome email asynchronously bằng rabitMQ
             Map<String, Object> response = new HashMap<>();
             response.put("user", UserResponseDTO.from(user));
             response.put("accessToken", accessToken);
@@ -123,7 +128,25 @@ public class AuthServiceImp implements AuthService {
 
             emailUniqueService.addToCache(email);
 
+            String payload = objectMapper.writeValueAsString(Map.of(
+                    "to", email,
+                    "subject", "Chào mừng đến với Clinic!",
+                    "templateName", "welcome",
+                    "variables", Map.of(
+                            "fullName", user.getFullName(),
+                            "email", email
+                    )
+            ));
+
+            producerTemplate.sendBody(
+                    "spring-rabbitmq://clinic.notification.exchange?queues=clinic.email.queue&routingKey=clinic.email&autoDeclare=true",
+                    payload
+            );
+
             return ResponseEntity.ok(response);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize email payload", e);
+            throw new RuntimeException(e.getMessage());
         } catch (TransactionSystemException e) {
             Throwable cause = e.getRootCause();
             if (cause instanceof ConstraintViolationException cve) {

@@ -1,5 +1,6 @@
 package com.camel.clinic.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.util.*;
 @Service
 @AllArgsConstructor
 public class CommonService {
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     public static int parseIntParam(Map<String, Object> params, String key, int defaultValue) {
         Object val = params.get(key);
@@ -162,5 +164,19 @@ public class CommonService {
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTime();
+    }
+
+    public static <T> T parsePayload(Object payload, Class<T> clazz) {
+        try {
+            if (payload instanceof String json) {
+                return mapper.readValue(json, clazz);
+            }
+
+            return mapper.convertValue(payload, clazz);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new IllegalArgumentException("Failed to parse payload: " + e.getMessage());
+        }
     }
 }

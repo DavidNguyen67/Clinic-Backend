@@ -43,6 +43,68 @@ spring:
         jdbc:
           batch_size: 50
     open-in-view: false
+  rabbitmq:
+    host: 159.223.41.100
+    port: 5672
+    username: davidnguyen67dev
+    password: e-ldCzHx-gUF4FImdj2eYcpl3DBDFLz7O0bsmidINAA
+    virtual-host: /
+    connection-timeout: 60000
+    listener:
+      simple:
+        acknowledge-mode: manual          # ACK thủ công để tránh mất message
+        prefetch: 10                       # Xử lý tối đa 10 msg/consumer cùng lúc
+        retry:
+          enabled: true
+          initial-interval: 3000           # Retry sau 3s
+          max-attempts: 3                  # Tối đa 3 lần retry
+          multiplier: 2.0                  # Backoff: 3s → 6s → 12s
+          max-interval: 30000
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: davidnguyen67dev@gmail.com
+    password: "cjdo pixq zoht netl"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: true
+
+rabbitmq:
+  exchange:
+    notification: clinic.notification.exchange
+    task: clinic.task.exchange
+    pubsub: clinic.pubsub.exchange
+    dead-letter: clinic.dlx.exchange       # Dead Letter Exchange
+  queue:
+    email: clinic.email.queue
+    push-notification: clinic.push.queue
+    task-background: clinic.task.queue
+    pubsub-broadcast: clinic.pubsub.queue
+    # Dead Letter Queues
+    email-dlq: clinic.email.dlq
+    push-dlq: clinic.push.dlq
+    task-dlq: clinic.task.dlq
+  routing-key:
+    email: clinic.email
+    push-notification: clinic.push
+    task-background: clinic.task
+    pubsub-broadcast: clinic.pubsub
+    # DLQ routing keys
+    email-dlq: clinic.email.dead
+    push-dlq: clinic.push.dead
+    task-dlq: clinic.task.dead
+
 camel:
   main:
     routes-include-pattern: classpath:camel/routes/*.yaml,classpath:camel/rest/*.yaml

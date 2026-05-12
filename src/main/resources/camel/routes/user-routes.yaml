@@ -58,3 +58,13 @@
             ref: userGetProcessor
         - marshal:
             json: { }
+
+- route:
+    id: public-user-statistics-route
+    from:
+      uri: direct:public-user-statistics
+      steps:
+        - process:
+            ref: userStatisticsProcessor
+        - marshal:
+            json: { }

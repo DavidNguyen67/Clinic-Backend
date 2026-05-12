@@ -1,6 +1,7 @@
 package com.camel.clinic.service.specialty;
 
 import com.camel.clinic.dto.specialty.CreateSpecialtyDto;
+import com.camel.clinic.dto.specialty.SpecialtyStatisticsDto;
 import com.camel.clinic.dto.specialty.UpdateSpecialtyDto;
 import com.camel.clinic.entity.Specialty;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,15 @@ public class SpecialtyServiceImp implements SpecialtyService {
     @Override
     public ResponseEntity<?> count() {
         return serviceInv.count();
+    }
+
+    @Override
+    public ResponseEntity<?> calculateStatistics(Map<String, Object> queryParams) {
+        SpecialtyStatisticsDto statistics = SpecialtyStatisticsDto.builder()
+                .totalSpecialties(serviceInv.countSpecialties(queryParams))
+                .build();
+
+        return ResponseEntity.ok(statistics);
     }
 
     @Override
