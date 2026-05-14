@@ -130,7 +130,7 @@
       steps:
         - setHeader:
             name: X-DTO-Class
-            constant: com.camel.clinic.dto.staff-promotion.CreatePromotionDto
+            constant: com.camel.clinic.dto.promotion.CreatePromotionDto
         - process:
             ref: requestDeserializerProcessor
         - process:
@@ -147,7 +147,7 @@
       steps:
         - setHeader:
             name: X-DTO-Class
-            constant: com.camel.clinic.dto.staff-promotion.UpdatePromotionDto
+            constant: com.camel.clinic.dto.promotion.UpdatePromotionDto
         - process:
             ref: requestDeserializerProcessor
         - process:

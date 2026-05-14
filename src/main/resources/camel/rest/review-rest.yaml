@@ -1,0 +1,70 @@
+- rest:
+    path: /v1/admin/review
+    get:
+      - path: /
+        to: direct:admin-review-list
+      - path: /count
+        to: direct:admin-review-count
+      - path: /{id}
+        to: direct:admin-review-get
+    post:
+      - path: /
+        to: direct:admin-review-create
+    patch:
+      - path: /{id}
+        to: direct:admin-review-update
+    delete:
+      - path: /{id}
+        to: direct:admin-review-delete
+
+- rest:
+    path: /v1/doctor/review
+    get:
+      - path: /
+        to: direct:doctor-review-list
+      - path: /count
+        to: direct:doctor-review-count
+      - path: /{id}
+        to: direct:doctor-review-get
+
+- rest:
+    path: /v1/staff/review
+    get:
+      - path: /
+        to: direct:staff-review-list
+      - path: /count
+        to: direct:staff-review-count
+      - path: /{id}
+        to: direct:staff-review-get
+    delete:
+      - path: /{id}
+        to: direct:staff-review-delete
+
+- rest:
+    path: /v1/patient/review
+    get:
+      - path: /
+        to: direct:patient-review-list
+      - path: /count
+        to: direct:patient-review-count
+      - path: /{id}
+        to: direct:patient-review-get
+    post:
+      - path: /
+        to: direct:patient-review-create
+    patch:
+      - path: /{id}
+        to: direct:patient-review-update
+    delete:
+      - path: /{id}
+        to: direct:patient-review-delete
+
+- rest:
+    path: /v1/public/review
+    get:
+      - path: /
+        to: direct:public-review-list
+      - path: /count
+        to: direct:public-review-count
+      - path: /{id}
+        to: direct:public-review-get

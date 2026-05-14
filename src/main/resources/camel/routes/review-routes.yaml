@@ -1,0 +1,229 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: admin-review-list-route
+    from:
+      uri: direct:admin-review-list
+      steps:
+        - process:
+            ref: reviewListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-count-route
+    from:
+      uri: direct:admin-review-count
+      steps:
+        - process:
+            ref: reviewCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-get-route
+    from:
+      uri: direct:admin-review-get
+      steps:
+        - process:
+            ref: reviewGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-create-route
+    from:
+      uri: direct:admin-review-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.review.CreatePromotionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: reviewCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-update-route
+    from:
+      uri: direct:admin-review-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.review.UpdatePromotionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: reviewUpdateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-restore-route
+    from:
+      uri: direct:admin-review-restore
+      steps:
+        - process:
+            ref: reviewRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-review-delete-route
+    from:
+      uri: direct:admin-review-delete
+      steps:
+        - process:
+            ref: reviewDeleteProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-list-route
+    from:
+      uri: direct:patient-review-list
+      steps:
+        - process:
+            ref: reviewListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-count-route
+    from:
+      uri: direct:patient-review-count
+      steps:
+        - process:
+            ref: reviewCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-get-route
+    from:
+      uri: direct:patient-review-get
+      steps:
+        - process:
+            ref: reviewGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-create-route
+    from:
+      uri: direct:patient-review-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.review.CreatePromotionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: reviewCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-update-route
+    from:
+      uri: direct:patient-review-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.review.UpdatePromotionDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: reviewUpdateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-restore-route
+    from:
+      uri: direct:patient-review-restore
+      steps:
+        - process:
+            ref: reviewRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-review-delete-route
+    from:
+      uri: direct:patient-review-delete
+      steps:
+        - process:
+            ref: reviewDeleteProcessor
+        - marshal:
+            json: { }
+
+# staff
+- route:
+    id: staff-review-list-route
+    from:
+      uri: direct:staff-review-list
+      steps:
+        - process:
+            ref: reviewListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-review-count-route
+    from:
+      uri: direct:staff-review-count
+      steps:
+        - process:
+            ref: reviewCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-review-get-route
+    from:
+      uri: direct:staff-review-get
+      steps:
+        - process:
+            ref: reviewGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-review-restore-route
+    from:
+      uri: direct:staff-review-restore
+      steps:
+        - process:
+            ref: reviewRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: staff-review-delete-route
+    from:
+      uri: direct:staff-review-delete
+      steps:
+        - process:
+            ref: reviewDeleteProcessor
+        - marshal:
+            json: { }
