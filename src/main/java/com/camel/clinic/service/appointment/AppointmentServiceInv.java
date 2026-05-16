@@ -4,13 +4,16 @@ import com.camel.clinic.dto.ApiPaged;
 import com.camel.clinic.dto.appointment.AppointmentStatisticsDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
 import com.camel.clinic.entity.Appointment;
+import com.camel.clinic.entity.Invoice;
 import com.camel.clinic.entity.Specialty;
 import com.camel.clinic.repository.AppointmentRepository;
+import com.camel.clinic.repository.InvoiceRepository;
 import com.camel.clinic.service.BaseService;
 import com.camel.clinic.service.CommonService;
 import jakarta.persistence.criteria.Fetch;
 import jakarta.persistence.criteria.JoinType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -21,9 +24,11 @@ import java.util.*;
 @Slf4j
 @Service
 public class AppointmentServiceInv extends BaseService<Appointment, AppointmentRepository> {
+    private final InvoiceRepository invoiceRepository;
 
-    public AppointmentServiceInv(AppointmentRepository repository) {
+    public AppointmentServiceInv(AppointmentRepository repository, InvoiceRepository invoiceRepository) {
         super(Appointment::new, repository);
+        this.invoiceRepository = invoiceRepository;
     }
 
     @Override
@@ -54,7 +59,11 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
     public ResponseEntity<?> retrieve(String id, String fields) {
         ResponseEntity<?> base = super.retrieve(id, fields);
         if (base.getBody() instanceof Appointment record) {
-            return ResponseEntity.ok(ResponseAppointmentDto.from(record));
+            List<Invoice> invoices = invoiceRepository.findByAppointmentId(record.getId())
+                    .stream().toList();
+            ResponseAppointmentDto dto = ResponseAppointmentDto.from(record);
+            dto.setInvoices(invoices);
+            return ResponseEntity.ok(dto);
         }
         return base;
     }
@@ -86,7 +95,13 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
         cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
         cal.set(Calendar.HOUR_OF_DAY, 23);
         cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.MILLISECOND, 999);
         Date monthEnd = cal.getTime();
+
+        cal.setTime(inputDate);
+        Date startDate = cal.getTime();
+
+        Date endDate = buildNextWeekEndTime(cal);
 
         cal.setTime(inputDate);
         cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -95,25 +110,19 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
 
         cal.set(Calendar.HOUR_OF_DAY, 23);
         cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.MILLISECOND, 999);
         Date todayEnd = cal.getTime();
+
+        Map<String, Object> todayParams = buildAppointmentTodayAndUpcomingParams(todayStart, todayEnd, queryParams);
+        long todayCount = repository.count(buildSpec(todayParams));
+
+        Map<String, Object> upcomingParams = buildAppointmentTodayAndUpcomingParams(startDate, endDate, queryParams);
+        long upcomingCount = repository.count(buildSpec(upcomingParams));
 
         Map<String, Object> monthParams = new HashMap<>(queryParams);
         monthParams.put("fromDate", CommonService.formatDate(monthStart, "HH:mm dd/MM/yyyy"));
         monthParams.put("toDate", CommonService.formatDate(monthEnd, "HH:mm dd/MM/yyyy"));
         monthParams.remove("appointmentDate");
-
-        Map<String, Object> todayParams = new HashMap<>(queryParams);
-        todayParams.put("fromDate", CommonService.formatDate(todayStart, "HH:mm dd/MM/yyyy"));
-        todayParams.put("toDate", CommonService.formatDate(todayEnd, "HH:mm dd/MM/yyyy"));
-        todayParams.remove("appointmentDate");
-        long todayCount = repository.count(buildSpec(todayParams));
-
-        Date tomorrow = new Date(todayEnd.getTime() + 60_000L);
-        Map<String, Object> upcomingParams = new HashMap<>(queryParams);
-        upcomingParams.put("fromDate", CommonService.formatDate(tomorrow, "HH:mm dd/MM/yyyy"));
-        upcomingParams.put("toDate", CommonService.formatDate(monthEnd, "HH:mm dd/MM/yyyy"));
-        upcomingParams.remove("appointmentDate");
-        long upcomingCount = repository.count(buildSpec(upcomingParams));
 
         long pendingCount = countByStatus(Appointment.AppointmentStatus.PENDING, monthParams);
         long confirmedCount = countByStatus(Appointment.AppointmentStatus.CONFIRMED, monthParams);
@@ -136,6 +145,16 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                 .build();
 
         return ResponseEntity.ok(dto);
+    }
+
+    private Date buildNextWeekEndTime(Calendar cal) {
+        cal.add(Calendar.DAY_OF_MONTH, 7);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        cal.set(Calendar.MILLISECOND, 999);
+
+        return cal.getTime();
     }
 
     private long countByStatus(Appointment.AppointmentStatus status, Map<String, Object> baseParams) {
@@ -162,6 +181,8 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                     }
                     return cb.conjunction();
                 })
+                .and(multiFieldNotIn(parseEnumList(queryParams.get("excludeStatus"), Appointment.AppointmentStatus.class)
+                        , new String[]{"status"}))
                 .and(excludeId(CommonService.parseToUuid(queryParams.get("excludeId"))))
                 .and(fieldIn("status", CommonService.parseToEnum(Appointment.AppointmentStatus.class, queryParams.get("status")), Appointment.AppointmentStatus.class))
                 .and(nestedFieldEqual("doctorProfile", "id", CommonService.parseToUuid(queryParams.get("doctorProfileId"))))
@@ -170,8 +191,8 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                         CommonService.parseToDate(
                                 (String) queryParams.get("appointmentDate"))))
                 .and(multiFieldBetweenDates(
-                        CommonService.parseToDate((String) queryParams.get("fromDate"), "dd/MM/yyyy"),
-                        CommonService.parseToDate((String) queryParams.get("toDate"), "dd/MM/yyyy"),
+                        CommonService.parseToDate((String) queryParams.get("fromDate"), "HH:mm dd/MM/yyyy"),
+                        CommonService.parseToDate((String) queryParams.get("toDate"), "HH:mm dd/MM/yyyy"),
                         new String[]{"appointmentDate"})
                 )
                 .and(keywordSpec(
@@ -201,5 +222,42 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
         long count = repository.count(buildSpec(params));
 
         return count > 0;
+    }
+
+    private Map<String, Object> buildAppointmentTodayAndUpcomingParams(Date startDate, Date endDate, Map<String, Object> baseParams) {
+        Map<String, Object> queryParams = new HashMap<>(baseParams);
+        queryParams.put("fromDate", CommonService.formatDate(startDate, "HH:mm dd/MM/yyyy"));
+        queryParams.put("toDate", CommonService.formatDate(endDate, "HH:mm dd/MM/yyyy"));
+        queryParams.put("excludeStatus",
+                List.of(Appointment.AppointmentStatus.COMPLETED.name(),
+                        Appointment.AppointmentStatus.CANCELLED.name(),
+                        Appointment.AppointmentStatus.NO_SHOW.name())
+        );
+        queryParams.remove("appointmentDate");
+
+        return queryParams;
+    }
+
+    public ResponseEntity<?> retrieveNext(Map<String, Object> queryParams) {
+        String inputDateStr = (String) queryParams.get("appointmentDate");
+        Date inputDate = inputDateStr != null
+                ? CommonService.parseToDate(inputDateStr, "HH:mm dd/MM/yyyy")
+                : new Date();
+
+        Calendar cal = Calendar.getInstance();
+        Date endDate = buildNextWeekEndTime(cal);
+
+        Map<String, Object> params = new HashMap<>(queryParams);
+        params.put("fromDate", CommonService.formatDate(inputDate, "HH:mm dd/MM/yyyy"));
+        params.put("toDate", CommonService.formatDate(endDate, "HH:mm dd/MM/yyyy"));
+        params.put("status", Appointment.AppointmentStatus.CONFIRMED.name());
+
+        Specification<Appointment> spec = buildSpec(params);
+
+        return repository.findAll(spec, Sort.by(Sort.Direction.ASC, "appointmentDate"))
+                .stream()
+                .findFirst()
+                .map(appointment -> ResponseEntity.ok(ResponseAppointmentDto.from(appointment)))
+                .orElse(ResponseEntity.noContent().build());
     }
 }

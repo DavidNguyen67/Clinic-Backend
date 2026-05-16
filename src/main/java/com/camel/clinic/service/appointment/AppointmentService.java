@@ -15,6 +15,8 @@ public interface AppointmentService {
 
     ResponseEntity<?> retrieve(String id);
 
+    ResponseEntity<?> retrieveNext(Map<String, Object> queryParams);
+
     ResponseEntity<?> create(CreateAppointmentDto requestBody);
 
     ResponseEntity<?> update(String id, UpdateAppointmentDto requestBody);

@@ -23,7 +23,8 @@ public class CreateAppointmentDto {
     @JsonFormat(
             shape = JsonFormat.Shape.STRING,
             pattern = "HH:mm dd/MM/yyyy",
-            timezone = "Asia/Ho_Chi_Minh"
+            timezone = "Asia/Ho_Chi_Minh",
+            locale = "vi_VN"
     )
     @Future(message = "Appointment date must be in the future")
     private Date appointmentDate;

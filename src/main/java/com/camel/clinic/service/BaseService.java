@@ -566,6 +566,21 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         };
     }
 
+    protected <V> Specification<T> multiFieldNotIn(List<V> values, String[]... fields) {
+        if (values == null || values.isEmpty()) return Specification.unrestricted();
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                    .map(f -> switch (f.length) {
+                        case 1 -> root.get(f[0]).in(values).not();
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values).not();
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values).not();
+                        default -> cb.conjunction();
+                    })
+                    .toArray(Predicate[]::new);
+            return cb.and(predicates);
+        };
+    }
+
     protected <E extends Enum<E>> List<E> parseEnumList(Object raw, Class<E> enumClass) {
         if (raw == null) return List.of();
 

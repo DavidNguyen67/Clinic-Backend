@@ -1,4 +1,6 @@
 spring:
+  jackson:
+    time-zone: Asia/Ho_Chi_Minh
   application:
     name: clinic
   datasource:
@@ -137,4 +139,3 @@ logging:
 
 cors:
   allowed-origins: "*"
-

@@ -52,6 +52,11 @@ public class AppointmentServiceImp implements AppointmentService {
     }
 
     @Override
+    public ResponseEntity<?> retrieveNext(Map<String, Object> queryParams) {
+        return serviceInv.retrieveNext(queryParams);
+    }
+
+    @Override
     public ResponseEntity<?> create(CreateAppointmentDto requestBody) {
         String doctorProfileId = requestBody.getDoctorProfileId();
         String patientProfileId = requestBody.getPatientProfileId();

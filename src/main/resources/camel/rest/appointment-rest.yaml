@@ -41,6 +41,10 @@
         to: direct:patient-appointment-list
       - path: /statistics
         to: direct:patient-appointment-statistics
+      - path: /next
+        to: direct:patient-appointment-next
+      - path: /{id}
+        to: direct:patient-appointment-get
     patch:
       - path: /{id}
         to: direct:patient-appointment-update

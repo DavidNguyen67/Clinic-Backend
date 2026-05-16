@@ -144,6 +144,26 @@
             json: { }
 
 - route:
+    id: patient-appointment-get-route
+    from:
+      uri: direct:patient-appointment-get
+      steps:
+        - process:
+            ref: appointmentGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: patient-appointment-next-route
+    from:
+      uri: direct:patient-appointment-next
+      steps:
+        - process:
+            ref: appointmentNextProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: patient-appointment-update-route
     from:
       uri: direct:patient-appointment-update
