@@ -12,7 +12,7 @@ pipeline {
         TELEGRAM_CREDS     = 'telegram-bot-token'
         TELEGRAM_CHAT_ID   = 'telegram-chat-id'
 
-        VPS_HOST           = 'vps.ip.address'
+        VPS_HOST           = 'vps-ip-address'
         VPS_USER           = 'root'
 
         GIT_COMMIT_SHORT   = ''
