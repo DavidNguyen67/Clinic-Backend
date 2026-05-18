@@ -118,42 +118,55 @@ pipeline {
                         def host = VPS_HOST
                         def user = VPS_USER
 
-                        sh """
-                            ssh -i \$SSH_KEY \\
-                                -o StrictHostKeyChecking=no \\
-                                -o ConnectTimeout=10 \\
-                                ${user}@${host} bash -s << 'ENDSSH'
-                                set -e
+                        def deployScript = """#!/bin/bash
+                            set -e
 
-                                echo "=== [1/5] Login DockerHub ==="
-                                echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
+                            echo "=== [1/5] Login DockerHub ==="
+                            echo "\${DOCKER_PASS_ARG}" | docker login -u "\${DOCKER_USER_ARG}" --password-stdin
 
-                                echo "=== [2/5] Pull image mới: ${tag} ==="
-                                docker pull ${tag}
+                            echo "=== [2/5] Pull image moi: ${tag} ==="
+                            docker pull ${tag}
 
-                                echo "=== [3/5] Dừng & xóa container cũ (nếu có) ==="
-                                docker stop ${name} 2>/dev/null || true
-                                docker rm   ${name} 2>/dev/null || true
+                            echo "=== [3/5] Dung & xoa container cu (neu co) ==="
+                            docker stop ${name} 2>/dev/null || true
+                            docker rm   ${name} 2>/dev/null || true
 
-                                echo "=== [4/5] Chạy container mới ==="
-                                docker run -d \\
-                                    --name ${name} \\
-                                    --restart unless-stopped \\
-                                    -p ${port}:8080 \\
-                                    ${tag}
+                            echo "=== [4/5] Chay container moi ==="
+                            docker run -d \\
+                                --name ${name} \\
+                                --restart unless-stopped \\
+                                -p ${port}:8080 \\
+                                ${tag}
 
-                                echo "=== [5/5] Dọn image cũ — giữ lại ${keep} gần nhất ==="
-                                docker images ${repo} --format '{{.Tag}} {{.ID}}' \\
-                                    | grep -v latest \\
-                                    | sort -r \\
-                                    | tail -n +\$(( ${keep} + 1 )) \\
-                                    | awk '{print \$2}' \\
-                                    | xargs -r docker rmi -f || true
+                            echo "=== [5/5] Don image cu - giu lai ${keep} gan nhat ==="
+                            docker images ${repo} --format '{{.Tag}} {{.ID}}' \\
+                                | grep -v latest \\
+                                | sort -r \\
+                                | tail -n +\$(( ${keep} + 1 )) \\
+                                | awk '{print \$2}' \\
+                                | xargs -r docker rmi -f || true
 
-                                docker logout
-                                echo "✅ Deploy thành công!"
-                                ENDSSH
-                        """
+                            docker logout
+                            echo "Deploy thanh cong!"
+                            """
+                        // Ghi script vào file tạm trên Jenkins agent
+                        writeFile file: '/tmp/deploy.sh', text: deployScript
+
+                        // scp file lên VPS, rồi ssh chạy — truyền credentials qua env vars
+                        sh '''
+                            scp -i "$SSH_KEY" \
+                                -o StrictHostKeyChecking=no \
+                                -o ConnectTimeout=10 \
+                                /tmp/deploy.sh ''' + "${user}@${host}" + ''':/tmp/deploy_clinic.sh
+
+                            ssh -i "$SSH_KEY" \
+                                -o StrictHostKeyChecking=no \
+                                -o ConnectTimeout=10 \
+                                ''' + "${user}@${host}" + ''' \
+                                "DOCKER_USER_ARG=$DOCKER_USER DOCKER_PASS_ARG=$DOCKER_PASS bash /tmp/deploy_clinic.sh; rm -f /tmp/deploy_clinic.sh"
+                        '''
+
+                        sh 'rm -f /tmp/deploy.sh'
                     }
                 }
             }
