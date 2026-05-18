@@ -13,6 +13,7 @@ pipeline {
         SSH_CREDS          = 'vps-ssh-credentials'
         TELEGRAM_CREDS     = 'telegram-bot-token'
         TELEGRAM_CHAT_ID   = 'telegram-chat-id'
+        JENKINS_API_CREDS = 'jenkins-api-credentials'
 
         VPS_HOST           = '159.223.41.100'
         VPS_USER           = 'root'
@@ -267,7 +268,12 @@ def sendTelegram(String message) {
 def sendLogFile(String status) {
     withCredentials([
         string(credentialsId: "${TELEGRAM_CREDS}",   variable: 'BOT_TOKEN'),
-        string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID')
+        string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID'),
+        usernamePassword(
+            credentialsId: "${JENKINS_API_CREDS}",
+            usernameVariable: 'JENKINS_USER',
+            passwordVariable: 'JENKINS_TOKEN'
+        )
     ]) {
         script {
             def safeJobName = env.JOB_NAME.replaceAll('[^a-zA-Z0-9_-]', '_')
@@ -276,19 +282,21 @@ def sendLogFile(String status) {
             def caption     = "📋 Build log — ${env.JOB_NAME} #${env.BUILD_NUMBER} [${status.toUpperCase()}]"
 
             sh """
-                # 1. Tải console log từ Jenkins API
+                # 1. Tải console log với auth
                 curl -s --max-time 30 \\
+                    -u "\${JENKINS_USER}:\${JENKINS_TOKEN}" \\
                     "\${JENKINS_URL}job/${env.JOB_NAME}/${env.BUILD_NUMBER}/consoleText" \\
                     -o "${logFilePath}" || true
 
-                # Fallback qua BUILD_URL nếu URL trên trống (multi-branch / folder job)
+                # Fallback qua BUILD_URL
                 if [ ! -s "${logFilePath}" ]; then
                     curl -s --max-time 30 \\
+                        -u "\${JENKINS_USER}:\${JENKINS_TOKEN}" \\
                         "\${BUILD_URL}consoleText" \\
                         -o "${logFilePath}" || true
                 fi
 
-                # Vẫn trống → tạo file thông báo để không gửi file rỗng
+                # Vẫn trống → tạo file thông báo
                 if [ ! -s "${logFilePath}" ]; then
                     echo "Không lấy được console log từ Jenkins API." > "${logFilePath}"
                 fi

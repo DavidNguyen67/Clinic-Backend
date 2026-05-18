@@ -75,27 +75,17 @@ public class AuthServiceInv extends BaseService<User, UserRepository> {
             Optional<DoctorProfile> doctor = doctorProfileRepository.findByUserId(userId);
 
             if (doctor.isPresent()) {
-//                List<DoctorSchedule> schedules = doctorScheduleRepository.findByDoctorId(doctor.get().getId());
-//                List<UserProfileDTO.DoctorProfileDTO.ScheduleDTO> scheduleDTOs = schedules.stream().map(s -> {
-//                    UserProfileDTO.DoctorProfileDTO.ScheduleDTO dto = new UserProfileDTO.DoctorProfileDTO.ScheduleDTO();
-//                    dto.setId(s.getId());
-//                    dto.setDayOfWeek(s.getDayOfWeek());
-//                    dto.setStartTime(s.getStartTime().toString());
-//                    dto.setEndTime(s.getEndTime().toString());
-//                    return dto;
-//                }).toList();
-
                 DoctorProfile doc = doctor.get();
                 UserProfileDTO.DoctorProfileDTO doctorDTO = new UserProfileDTO.DoctorProfileDTO();
                 doctorDTO.setId(doc.getId());
                 doctorDTO.setExperienceYears(doc.getExperienceYears());
+                doctorDTO.setDoctorCode(doc.getDoctorCode());
                 doctorDTO.setDegree(doc.getDegree());
                 doctorDTO.setEducation(doc.getEducation());
                 doctorDTO.setBio(doc.getBio());
                 doctorDTO.setConsultationFee(doc.getConsultationFee().doubleValue());
                 doctorDTO.setAverageRating(doc.getAverageRating().doubleValue());
                 doctorDTO.setTotalReviews(doc.getTotalReviews());
-//                doctorDTO.setSchedules(scheduleDTOs);
 
                 // Specialty
                 if (doc.getSpecialty() != null) {
