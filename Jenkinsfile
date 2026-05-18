@@ -8,6 +8,8 @@ pipeline {
         KEEP_IMAGES        = '3'
 
         DOCKERHUB_CREDS    = 'dockerhub-credentials'
+        DOCKER_USER        = 'dockerhub-username'
+        DOCKER_PASS        = 'dockerhub-password'
         SSH_CREDS          = 'vps-ssh-credentials'
         TELEGRAM_CREDS     = 'telegram-bot-token'
         TELEGRAM_CHAT_ID   = 'telegram-chat-id'
@@ -108,12 +110,6 @@ pipeline {
                     )
                 ]) {
                     script {
-                        // FIX 1: capture env vars vào local var trước khi truyền vào shell
-                        // FIX 2: dùng heredoc << 'ENDSSH' (single-quote) để:
-                        //   - tránh Groovy interpolate brace-expressions của Docker format
-                        //   - tránh secret bị lộ qua Groovy string interpolation
-                        // FIX 3: biến IMAGE_TAG, DOCKER_USER, DOCKER_PASS được export
-                        //        trước khi gọi SSH, rồi dùng $VAR trong heredoc
                         def tag  = env.IMAGE_TAG
                         def repo = DOCKERHUB_REPO
                         def keep = KEEP_IMAGES
