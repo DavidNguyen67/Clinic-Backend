@@ -20,7 +20,7 @@ public class LoyaltyTransactionServiceImp implements LoyaltyTransactionService {
     private final LoyaltyTransactionServiceInv serviceInv;
     private final PatientProfileServiceInv patientProfileServiceInv;
 
-    private static LoyaltyTransaction getLoyaltyTransaction(CreateLoyaltyTransactionDto requestBody, PatientProfile patientProfile) {
+    private static LoyaltyTransaction buildLoyaltyTransaction(CreateLoyaltyTransactionDto requestBody, PatientProfile patientProfile) {
         LoyaltyTransaction loyaltyTransaction = new LoyaltyTransaction();
         loyaltyTransaction.setPatientProfile(patientProfile);
         loyaltyTransaction.setTransactionType(requestBody.getTransactionType());
@@ -63,8 +63,8 @@ public class LoyaltyTransactionServiceImp implements LoyaltyTransactionService {
         if (patientProfile == null) {
             throw new BadRequestException("Patient profile with ID " + patientProfileId + " not found");
         }
-        LoyaltyTransaction loyaltyTransaction = getLoyaltyTransaction(requestBody, patientProfile);
-
+        LoyaltyTransaction loyaltyTransaction = buildLoyaltyTransaction(requestBody, patientProfile);
+        loyaltyTransaction.calculateBalanceAfter(patientProfile.getLoyaltyPoints());
         return serviceInv.create(loyaltyTransaction);
     }
 
@@ -80,7 +80,7 @@ public class LoyaltyTransactionServiceImp implements LoyaltyTransactionService {
         loyaltyTransaction.setReferenceId(requestBody.getReferenceId());
         loyaltyTransaction.setDescription(requestBody.getDescription());
         loyaltyTransaction.setExpiresAt(requestBody.getExpiresAt());
-
+        loyaltyTransaction.calculateBalanceAfter(loyaltyTransaction.getPatientProfile().getLoyaltyPoints());
         return serviceInv.update(id, loyaltyTransaction, null);
     }
 

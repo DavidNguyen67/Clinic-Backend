@@ -7,6 +7,7 @@ import com.camel.clinic.service.CommonService;
 import jakarta.persistence.criteria.JoinType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -39,9 +40,13 @@ public class InvoiceServiceInv extends BaseService<Invoice, InvoiceRepository> {
                         )
                                 .and(multiFieldEquals(queryParams.get("patientProfileId"),
                                         new String[]{"patientProfile", "id"}
-                                )).and(multiFieldOnDate(CommonService.parseToDate((String) queryParams.get("invoiceDate")),
+                                ))
+                                .and(multiFieldOnDate(CommonService.parseToDate((String) queryParams.get("invoiceDate")),
                                         new String[]{"invoiceDate"},
                                         new String[]{"createdAt"}
+                                ))
+                                .and(multiFieldEquals(queryParams.get("appointmentId"),
+                                        new String[]{"appointment", "id"}
                                 ))
                 );
     }
@@ -53,5 +58,14 @@ public class InvoiceServiceInv extends BaseService<Invoice, InvoiceRepository> {
         long count = repository.count(buildSpec(params));
 
         return count > 0;
+    }
+
+    public ResponseEntity<?> retrieveByAppointmentId(String appointmentId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("appointmentId", CommonService.parseToUuid(appointmentId));
+
+        Invoice invoice = repository.findOne(buildSpec(params)).orElse(null);
+
+        return ResponseEntity.ok(invoice);
     }
 }

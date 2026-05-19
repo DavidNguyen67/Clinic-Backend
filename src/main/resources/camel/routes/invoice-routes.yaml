@@ -40,6 +40,16 @@
             json: { }
 
 - route:
+    id: staff-invoice-get-by-appointment-route
+    from:
+      uri: direct:staff-invoice-get-by-appointment
+      steps:
+        - process:
+            ref: invoiceGetProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: staff-invoice-create-route
     from:
       uri: direct:staff-invoice-create

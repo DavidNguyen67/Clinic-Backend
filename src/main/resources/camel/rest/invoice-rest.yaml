@@ -10,6 +10,8 @@
         to: direct:staff-invoice-count
       - path: /{id}
         to: direct:staff-invoice-get
+      - path: /appointment/{appointmentId}
+        to: direct:staff-invoice-get-by-appointment
     patch:
       - path: /{id}
         to: direct:staff-invoice-update

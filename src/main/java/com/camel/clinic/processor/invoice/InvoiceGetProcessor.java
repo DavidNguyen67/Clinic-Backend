@@ -17,7 +17,14 @@ public class InvoiceGetProcessor implements Processor {
     @Override
     public void process(Exchange exchange) {
         String id = exchange.getIn().getHeader("id", String.class);
-        ResponseEntity<?> response = serviceImp.retrieve(id);
+        String appointmentId = exchange.getIn().getHeader("appointmentId", String.class);
+        ResponseEntity<?> response;
+        if (appointmentId != null) {
+            response = serviceImp.retrieveByAppointmentId(appointmentId);
+        } else {
+            response = serviceImp.retrieve(id);
+        }
+
         exchange.getIn().setBody(response);
     }
 }

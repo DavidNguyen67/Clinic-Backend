@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 import static com.camel.clinic.entity.Appointment.AppointmentStatus.*;
@@ -190,6 +191,7 @@ public class AppointmentServiceImp implements AppointmentService {
 
             UpdateInvoiceDto invoiceRequest = new UpdateInvoiceDto();
             invoiceRequest.setItems(items);
+            invoiceRequest.setPatientPaid(BigDecimal.ZERO);
 
             invoiceServiceImp.update(invoice.getId().toString(), invoiceRequest, false);
         }

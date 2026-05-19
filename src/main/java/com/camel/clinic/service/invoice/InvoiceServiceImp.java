@@ -34,7 +34,7 @@ public class InvoiceServiceImp implements InvoiceService {
     private final AppointmentRepository appointmentRepository;
     private final LoyaltyTransactionServiceImp loyaltyTransactionServiceImp;
 
-    private static CreateLoyaltyTransactionDto getCreateLoyaltyTransactionDto(Invoice invoice) {
+    private static CreateLoyaltyTransactionDto buildCreateLoyaltyTransactionDto(Invoice invoice) {
         BigDecimal paid = invoice.getPatientPaid();
 
         Integer pointEarned = paid.divideToIntegralValue(BigDecimal.valueOf(10000)).intValue();
@@ -153,7 +153,7 @@ public class InvoiceServiceImp implements InvoiceService {
                         .contains(invoice.getStatus()))) {
             invoice.setStatus(Invoice.InvoiceStatus.PAID);
         }
-        CreateLoyaltyTransactionDto loyaltyTransactionDto = getCreateLoyaltyTransactionDto(invoice);
+        CreateLoyaltyTransactionDto loyaltyTransactionDto = buildCreateLoyaltyTransactionDto(invoice);
         loyaltyTransactionServiceImp.create(loyaltyTransactionDto);
 
         return serviceInv.update(id, invoice, null);
@@ -173,6 +173,10 @@ public class InvoiceServiceImp implements InvoiceService {
     @Override
     public ResponseEntity<?> list(Map<String, Object> queryParams) {
         return serviceInv.list(queryParams);
+    }
+
+    public ResponseEntity<?> retrieveByAppointmentId(String appointmentId) {
+        return serviceInv.retrieveByAppointmentId(appointmentId);
     }
 }
 
