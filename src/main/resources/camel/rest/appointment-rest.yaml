@@ -34,6 +34,12 @@
         to: direct:staff-appointment-list
       - path: /statistics
         to: direct:staff-appointment-statistics
+      - path: /{id}
+        to: direct:staff-appointment-get
+    patch:
+      - path: /{id}
+        to: direct:staff-appointment-update
+
 - rest:
     path: /v1/patient/appointment
     get:
