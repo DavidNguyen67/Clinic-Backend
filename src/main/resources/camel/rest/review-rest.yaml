@@ -49,6 +49,8 @@
         to: direct:patient-review-count
       - path: /{id}
         to: direct:patient-review-get
+      - path: /appointment/{appointmentId}
+        to: direct:patient-review-get-by-appointment
     post:
       - path: /
         to: direct:patient-review-create
