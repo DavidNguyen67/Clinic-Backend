@@ -67,59 +67,58 @@ pipeline {
                 }
             }
         }
+    }
 
-        stage('🚀 Push to DockerHub') {
-            when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+    stage('🚀 Push to DockerHub') {
+        when {
+            expression {
+                return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
             }
-            steps {
-                withCredentials([usernamePassword(
-                        credentialsId: "${DOCKERHUB_CREDS}",
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    // FIX: dùng single-quote shell (''') + nối chuỗi Groovy cho IMAGE_TAG
-                    //      để tránh secret bị interpolate vào Groovy string
-                    sh '''
+        }
+        steps {
+            withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDS}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+            )]) {
+                sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push ''' + env.IMAGE_TAG + '''
                         docker push ''' + DOCKERHUB_REPO + ''':latest
                         docker logout
                     '''
-                }
             }
         }
+    }
 
-        stage('🌐 Deploy to VPS') {
-            when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+    stage('🌐 Deploy to VPS') {
+        when {
+            expression {
+                return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
             }
-            steps {
-                withCredentials([
-                        sshUserPrivateKey(
-                                credentialsId: "${SSH_CREDS}",
-                                keyFileVariable: 'SSH_KEY'
-                        ),
-                        usernamePassword(
-                                credentialsId: "${DOCKERHUB_CREDS}",
-                                usernameVariable: 'DOCKER_USER',
-                                passwordVariable: 'DOCKER_PASS'
-                        )
-                ]) {
-                    script {
-                        def tag = env.IMAGE_TAG
-                        def repo = DOCKERHUB_REPO
-                        def keep = KEEP_IMAGES
-                        def name = APP_CONTAINER_NAME
-                        def port = APP_PORT
-                        def host = VPS_HOST
-                        def user = VPS_USER
+        }
+        steps {
+            withCredentials([
+                    sshUserPrivateKey(
+                            credentialsId: "${SSH_CREDS}",
+                            keyFileVariable: 'SSH_KEY'
+                    ),
+                    usernamePassword(
+                            credentialsId: "${DOCKERHUB_CREDS}",
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                    )
+            ]) {
+                script {
+                    def tag = env.IMAGE_TAG
+                    def repo = DOCKERHUB_REPO
+                    def keep = KEEP_IMAGES
+                    def name = APP_CONTAINER_NAME
+                    def port = APP_PORT
+                    def host = VPS_HOST
+                    def user = VPS_USER
 
-                        def deployScript = """#!/bin/bash
+                    def deployScript = """#!/bin/bash
                             set -e
 
                             echo "=== [1/5] Login DockerHub ==="
@@ -166,11 +165,11 @@ pipeline {
                             docker logout
                             echo "Deploy thanh cong!"
                             """
-                        // Ghi script vào file tạm trên Jenkins agent
-                        writeFile file: '/tmp/deploy.sh', text: deployScript
+                    // Ghi script vào file tạm trên Jenkins agent
+                    writeFile file: '/tmp/deploy.sh', text: deployScript
 
-                        // scp file lên VPS, rồi ssh chạy — truyền credentials qua env vars
-                        sh '''
+                    // scp file lên VPS, rồi ssh chạy — truyền credentials qua env vars
+                    sh '''
                             scp -i "$SSH_KEY" \
                                 -o StrictHostKeyChecking=no \
                                 -o ConnectTimeout=10 \
@@ -183,56 +182,57 @@ pipeline {
                                 "DOCKER_USER_ARG=$DOCKER_USER DOCKER_PASS_ARG=$DOCKER_PASS bash /tmp/deploy_clinic.sh; rm -f /tmp/deploy_clinic.sh"
                         '''
 
-                        sh 'rm -f /tmp/deploy.sh'
-                    }
+                    sh 'rm -f /tmp/deploy.sh'
                 }
             }
         }
     }
+}
 
-    post {
-        success {
-            script {
-                sendTelegram(
-                        "✅ *BUILD THÀNH CÔNG*\n" +
-                                "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "🔖 *Image:* `${env.IMAGE_TAG}`\n" +
-                                "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                                "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
-                                "⏱️ *Thời gian:* ${currentBuild.durationString}"
-                )
-            }
+post {
+    success {
+        script {
+            sendTelegram(
+                    "✅ *BUILD THÀNH CÔNG*\n" +
+                            "📦 *Project:* `${env.JOB_NAME}`\n" +
+                            "🔖 *Image:* `${env.IMAGE_TAG}`\n" +
+                            "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                            "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
+                            "⏱️ *Thời gian:* ${currentBuild.durationString}"
+            )
         }
+    }
 
-        failure {
-            script {
-                sendTelegram(
-                        "❌ *BUILD THẤT BẠI*\n" +
-                                "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                                "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
-                                "⏱️ *Thời gian:* ${currentBuild.durationString}\n"
-                )
-            }
+    failure {
+        script {
+            sendTelegram(
+                    "❌ *BUILD THẤT BẠI*\n" +
+                            "📦 *Project:* `${env.JOB_NAME}`\n" +
+                            "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                            "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
+                            "⏱️ *Thời gian:* ${currentBuild.durationString}"
+            )
+            saveAndSendLog("📋 Log build *#${env.BUILD_NUMBER}*")
         }
+    }
 
-        aborted {
-            script {
-                sendTelegram(
-                        "⚠️ *BUILD BỊ HỦY*\n" +
-                                "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                                "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
-                                "⏱️ *Thời gian:* ${currentBuild.durationString}\n"
-                )
-            }
+    aborted {
+        script {
+            sendTelegram(
+                    "⚠️ *BUILD BỊ HỦY*\n" +
+                            "📦 *Project:* `${env.JOB_NAME}`\n" +
+                            "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                            "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
+                            "⏱️ *Thời gian:* ${currentBuild.durationString}"
+            )
+            saveAndSendLog("📋 Log build *#${env.BUILD_NUMBER}*")
         }
+    }
 
-        always {
-            script {
-                // Dọn image trên Jenkins agent sau mỗi build
-                sh "docker rmi ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest 2>/dev/null || true"
-            }
+    always {
+        script {
+            // Dọn image trên Jenkins agent sau mỗi build
+            sh "docker rmi ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest 2>/dev/null || true"
         }
     }
 }
@@ -245,7 +245,6 @@ def sendTelegram(String message) {
             string(credentialsId: "${TELEGRAM_CREDS}", variable: 'BOT_TOKEN'),
             string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID')
     ]) {
-        // Ghi message ra file tạm để tránh vấn đề escape trên command line
         def tmpFile = "/tmp/tg_msg_${env.BUILD_NUMBER}.txt"
         writeFile file: tmpFile, text: message
         sh """
@@ -258,4 +257,48 @@ def sendTelegram(String message) {
             rm -f ${tmpFile}
         """
     }
+}
+
+def sendTelegramFile(String filePath, String caption = "") {
+    withCredentials([
+            string(credentialsId: "${TELEGRAM_CREDS}", variable: 'BOT_TOKEN'),
+            string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID')
+    ]) {
+        def tmpCaption = "/tmp/tg_caption_${env.BUILD_NUMBER}.txt"
+        writeFile file: tmpCaption, text: caption
+        sh """
+            CAPTION=\$(cat ${tmpCaption})
+            curl -s -X POST "https://api.telegram.org/bot\${BOT_TOKEN}/sendDocument" \\
+                -F chat_id="\${CHAT_ID}" \\
+                -F parse_mode="Markdown" \\
+                -F caption="\${CAPTION}" \\
+                -F document=@"${filePath}"
+            rm -f ${tmpCaption}
+        """
+    }
+}
+
+def getLogContent() {
+    withCredentials([
+            usernamePassword(
+                    credentialsId: "${JENKINS_API_CREDS}",
+                    usernameVariable: 'JENKINS_USER',
+                    passwordVariable: 'JENKINS_TOKEN'
+            )
+    ]) {
+        return sh(
+                script: """
+                curl -s -u "\${JENKINS_USER}:\${JENKINS_TOKEN}" \\
+                    "${env.JENKINS_URL}job/${env.JOB_NAME}/${env.BUILD_NUMBER}/consoleText"
+            """,
+                returnStdout: true
+        ).trim()
+    }
+}
+
+def saveAndSendLog(String caption = "") {
+    def logFile = "/tmp/build_log_${env.BUILD_NUMBER}.txt"
+    writeFile file: logFile, text: getLogContent()
+    sendTelegramFile(logFile, caption)
+    sh "rm -f ${logFile}"
 }
