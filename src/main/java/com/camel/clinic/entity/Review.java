@@ -30,7 +30,7 @@ public class Review extends SoftDeletableEntity {
     @JoinColumn(name = "doctor_id", foreignKey = @ForeignKey(name = "fk_review_doctor"))
     private DoctorProfile doctorProfile;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "appointment_id", foreignKey = @ForeignKey(name = "fk_review_appointment"))
     private Appointment appointment;
 

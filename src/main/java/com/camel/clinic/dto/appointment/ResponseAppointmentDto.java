@@ -50,6 +50,8 @@ public class ResponseAppointmentDto {
     private List<ClinicService> clinicServices;
     private BigDecimal fee;
 
+    private boolean reviewed;
+
     @JsonFormat(
             shape = JsonFormat.Shape.STRING,
             pattern = "HH:mm:ss dd/MM/yyyy",
@@ -106,6 +108,9 @@ public class ResponseAppointmentDto {
             res.setClinicServices(services);
         }
 
+        if (a.getReviews() != null) {
+            res.setReviewed(a.getReviews().getId() != null);
+        }
         return res;
     }
 }

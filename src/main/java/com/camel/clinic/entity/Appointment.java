@@ -59,6 +59,9 @@ public class Appointment extends SoftDeletableEntity {
     )
     private Date appointmentDate;
 
+    @OneToOne(mappedBy = "appointment")
+    private Review reviews;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AppointmentStatus status = AppointmentStatus.PENDING;

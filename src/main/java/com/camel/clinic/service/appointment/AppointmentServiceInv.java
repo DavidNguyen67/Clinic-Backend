@@ -178,6 +178,10 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
                         specialtyFetch.fetch("services", JoinType.LEFT);
 
                         root.fetch("clinicService", JoinType.LEFT);
+
+                        // Fetch reviews (reverse side: Review.appointment -> Appointment)
+                        root.fetch("reviews", JoinType.LEFT);
+
                         query.distinct(true);
                     }
                     return cb.conjunction();

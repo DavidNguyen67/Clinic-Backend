@@ -1,5 +1,6 @@
 package com.camel.clinic.service.review;
 
+import com.camel.clinic.dto.review.ReviewDto;
 import com.camel.clinic.entity.Review;
 import com.camel.clinic.repository.ReviewRepository;
 import com.camel.clinic.service.BaseService;
@@ -23,6 +24,9 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
     protected Specification<Review> buildSpec(Map<String, Object> queryParams) {
         return Specification.<Review>unrestricted()
                 .and(notDeleted())
+                .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("reviewId")),
+                        new String[]{"id"}
+                ))
                 .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("appointmentId")),
                         new String[]{"appointment", "id"}
                 ));
@@ -32,10 +36,20 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
         Map<String, Object> params = new HashMap<>();
         params.put("appointmentId", appointmentId);
 
-        Specification<Review> spec = buildSpec(params);
+        Review review = repository.findOne(buildSpec(params))
+                .orElseThrow(() -> new RuntimeException("Review not found with appointmentId: " + appointmentId));
 
-        Review review = repository.findOne(spec).orElse(null);
+        return ResponseEntity.ok(ReviewDto.from(review));
+    }
 
-        return ResponseEntity.ok(review);
+    @Override
+    public ResponseEntity<?> retrieve(String id, String fields) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("reviewId", id);
+
+        Review review = repository.findOne(buildSpec(params))
+                .orElseThrow(() -> new RuntimeException("Review not found with ID: " + id));
+
+        return ResponseEntity.ok(ReviewDto.from(review));
     }
 }
