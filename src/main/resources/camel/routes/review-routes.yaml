@@ -104,6 +104,16 @@
             json: { }
 
 - route:
+    id: public-review-list-route
+    from:
+      uri: direct:public-review-list
+      steps:
+        - process:
+            ref: reviewListProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: patient-review-count-route
     from:
       uri: direct:patient-review-count

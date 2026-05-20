@@ -1,16 +1,19 @@
 package com.camel.clinic.service.review;
 
+import com.camel.clinic.dto.ApiPaged;
 import com.camel.clinic.dto.review.ReviewDto;
 import com.camel.clinic.entity.Review;
 import com.camel.clinic.repository.ReviewRepository;
 import com.camel.clinic.service.BaseService;
 import com.camel.clinic.service.CommonService;
+import jakarta.persistence.criteria.JoinType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -21,9 +24,36 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
     }
 
     @Override
+    public ResponseEntity<?> list(Map<String, Object> queryParams) {
+        ResponseEntity<?> response = super.list(queryParams);
+        ApiPaged<Review> resultPage = (ApiPaged<Review>) response.getBody();
+        assert resultPage != null;
+        List<ReviewDto> reviewDtos = resultPage.getData().stream().map(ReviewDto::from).toList();
+
+        ApiPaged<ReviewDto> paged = new ApiPaged<>(
+                reviewDtos,
+                resultPage.getTotal(),
+                resultPage.getTotalPages(),
+                resultPage.getPage(),
+                resultPage.getSize()
+        );
+
+        return ResponseEntity.ok(paged);
+    }
+
+    @Override
     protected Specification<Review> buildSpec(Map<String, Object> queryParams) {
         return Specification.<Review>unrestricted()
                 .and(notDeleted())
+                .and((root, query, cb) -> {
+                    assert query != null;
+                    if (!query.getResultType().equals(Long.class)) {
+                        root.fetch("patientProfile", JoinType.LEFT);
+                        root.fetch("doctorProfile", JoinType.LEFT);
+                        query.distinct(true);
+                    }
+                    return cb.conjunction();
+                })
                 .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("reviewId")),
                         new String[]{"id"}
                 ))
