@@ -1,0 +1,124 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: conservation-list-route
+    from:
+      uri: direct:conservation-list
+      steps:
+        - process:
+            ref: conservationListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-count-route
+    from:
+      uri: direct:conservation-count
+      steps:
+        - process:
+            ref: conservationCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-get-route
+    from:
+      uri: direct:conservation-get
+      steps:
+        - process:
+            ref: conservationGetProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-create-route
+    from:
+      uri: direct:conservation-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.conservation.CreateConservationqDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: conservationCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-update-route
+    from:
+      uri: direct:conservation-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.conservation.UpdateConservationqDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: conservationUpdateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-restore-route
+    from:
+      uri: direct:conservation-restore
+      steps:
+        - process:
+            ref: conservationRestoreProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: conservation-delete-route
+    from:
+      uri: direct:conservation-delete
+      steps:
+        - process:
+            ref: conservationDeleteProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: public-conservation-list-route
+    from:
+      uri: direct:public-conservation-list
+      steps:
+        - process:
+            ref: conservationListProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: public-conservation-count-route
+    from:
+      uri: direct:public-conservation-count
+      steps:
+        - process:
+            ref: conservationCountProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: public-conservation-get-route
+    from:
+      uri: direct:public-conservation-get
+      steps:
+        - process:
+            ref: conservationGetProcessor
+        - marshal:
+            json: { }

@@ -1,0 +1,20 @@
+- rest:
+    path: /v1/patient/conservation
+    post:
+      - path: /
+        to: direct:patient-conservation-create
+    get:
+      - path: /
+        to: direct:patient-conservation-list
+      - path: /count
+        to: direct:patient-conservation-count
+      - path: /{id}
+        to: direct:patient-conservation-get
+    patch:
+      - path: /{id}
+        to: direct:patient-conservation-update
+      - path: /restore/{id}
+        to: direct:patient-conservation-restore
+    delete:
+      - path: /{id}
+        to: direct:patient-conservation-delete
