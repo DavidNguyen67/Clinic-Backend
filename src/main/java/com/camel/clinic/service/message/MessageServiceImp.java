@@ -9,7 +9,6 @@ import com.camel.clinic.util.MessageStatus;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -37,11 +36,7 @@ public class MessageServiceImp implements MessageService {
     }
 
     @Override
-    public ResponseEntity<?> create(CreateMessageDto requestBody) {
-        String senderId = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
-
+    public ResponseEntity<?> create(CreateMessageDto requestBody, String senderId) {
         MessageDocument message = new MessageDocument();
         message.setConversationId(requestBody.getConversationId());
         message.setSenderId(senderId);
@@ -54,18 +49,14 @@ public class MessageServiceImp implements MessageService {
     }
 
     @Override
-    public ResponseEntity<?> update(String id, UpdateMessageDto requestBody) {
+    public ResponseEntity<?> update(String id, UpdateMessageDto requestBody, String senderId) {
         Object body = serviceInv.retrieve(id, null).getBody();
         if (!(body instanceof ResponseMessageDto existing)) {
             throw new BadRequestException("Message with ID " + id + " not found");
         }
 
-        String currentUserId = SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getName();
-
         if (requestBody.getContent() != null
-                && !existing.getSenderId().equals(currentUserId)) {
+                && !existing.getSenderId().equals(senderId)) {
             throw new BadRequestException("You are not allowed to edit this message");
         }
 

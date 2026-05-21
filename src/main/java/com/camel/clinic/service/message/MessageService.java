@@ -14,9 +14,9 @@ public interface MessageService {
 
     ResponseEntity<?> retrieve(String id);
 
-    ResponseEntity<?> create(CreateMessageDto requestBody);
+    ResponseEntity<?> create(CreateMessageDto requestBody, String senderId);
 
-    ResponseEntity<?> update(String id, UpdateMessageDto requestBody);
+    ResponseEntity<?> update(String id, UpdateMessageDto requestBody, String senderId);
 
     ResponseEntity<?> delete(String id);
 
