@@ -81,4 +81,10 @@ public class ConversationServiceImp implements ConversationService {
     public ResponseEntity<?> delete(String id) {
         return serviceInv.delete(id);
     }
+
+    @Override
+    public ResponseEntity<?> restore(String id) {
+        return serviceInv.restore(id);
+    }
+
 }

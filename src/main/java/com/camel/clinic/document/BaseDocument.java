@@ -1,5 +1,6 @@
 package com.camel.clinic.document;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
@@ -17,9 +18,19 @@ public abstract class BaseDocument {
 
     @CreatedDate
     @Field("created_at")
+    @JsonFormat(
+            shape = JsonFormat.Shape.STRING,
+            pattern = "HH:mm:ss dd/MM/yyyy",
+            timezone = "Asia/Ho_Chi_Minh"
+    )
     public Date createdAt;
 
     @LastModifiedDate
     @Field("updated_at")
+    @JsonFormat(
+            shape = JsonFormat.Shape.STRING,
+            pattern = "HH:mm:ss dd/MM/yyyy",
+            timezone = "Asia/Ho_Chi_Minh"
+    )
     public Date updatedAt;
 }

@@ -227,10 +227,6 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
         }
     }
 
-    // ─────────────────────────────────────────────
-    // RESTORE
-    // ─────────────────────────────────────────────
-
     @Transactional
     public ResponseEntity<?> restore(String id) {
         try {

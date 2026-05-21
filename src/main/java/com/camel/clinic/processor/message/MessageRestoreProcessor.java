@@ -1,16 +1,16 @@
-package com.camel.clinic.processor.conversation;
+package com.camel.clinic.processor.message;
 
-import com.camel.clinic.service.conversation.ConversationServiceImp;
+import com.camel.clinic.service.message.MessageServiceImp;
 import lombok.AllArgsConstructor;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
-@Component("conversationRestoreProcessor")
+@Component("messageRestoreProcessor")
 @AllArgsConstructor
-public class ConversationRestoreProcessor implements Processor {
-    private final ConversationServiceImp serviceImp;
+public class MessageRestoreProcessor implements Processor {
+    private final MessageServiceImp serviceImp;
 
     @Override
     public void process(Exchange exchange) throws Exception {

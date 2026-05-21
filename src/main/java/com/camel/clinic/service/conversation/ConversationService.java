@@ -19,4 +19,6 @@ public interface ConversationService {
     ResponseEntity<?> update(String id, UpdateConversationDto requestBody);
 
     ResponseEntity<?> delete(String id);
+
+    ResponseEntity<?> restore(String id);
 }
