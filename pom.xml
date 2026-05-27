@@ -225,7 +225,7 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>11.14.1</version>
                 <configuration>
-                    <url>jdbc:postgresql://159.223.41.100:5432/clinic_postgres</url>
+                    <url>jdbc:postgresql://168.144.141.68:5432/clinic_postgres</url>
                     <user>davidnguyen67dev</user>
                     <password>ThZLSkGbHn7koUctpL26ARzGK-maNiKDC-_xs9i-6J0</password>
                 </configuration>
