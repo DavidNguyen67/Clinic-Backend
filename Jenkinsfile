@@ -8,10 +8,8 @@ pipeline {
         KEEP_IMAGES = '3'
 
         DOCKERHUB_CREDS = 'dockerhub-credentials'
-        DOCKER_USER = 'dockerhub-username'
-        DOCKER_PASS = 'dockerhub-password'
         SSH_CREDS = 'vps-ssh-credentials'
-        TELEGRAM_CREDS = 'telegram-bot-token'
+        TELEGRAM_BOT_TOKEN = 'telegram-bot-token'
         TELEGRAM_CHAT_ID = 'telegram-chat-id'
         JENKINS_API_CREDS = 'jenkins-api-credentials'
         ENV_FILE = 'be-clinic-env'
@@ -33,46 +31,35 @@ pipeline {
     stages {
         stage('🔍 Checkout') {
             when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+                expression { env.GIT_BRANCH ==~ /^(origin\/)?master$/ }
             }
             steps {
                 checkout scm
                 script {
-                    // FIX: dùng def để tránh memory-leak warning,
-                    //      rồi gán lại vào env.* để các stage sau dùng được
                     def commitShort = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    def imageTag = "${DOCKERHUB_REPO}:${commitShort}"
-
                     env.GIT_COMMIT_SHORT = commitShort
-                    env.IMAGE_TAG = imageTag
-
-                    echo "📦 Image sẽ được tag: ${env.IMAGE_TAG}"
+                    env.IMAGE_TAG = "${DOCKERHUB_REPO}:${commitShort}"
+                    echo "📦 Image tag: ${env.IMAGE_TAG}"
                 }
             }
         }
 
         stage('🏗️ Build Docker Image') {
             when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+                expression { env.GIT_BRANCH ==~ /^(origin\/)?master$/ }
             }
             steps {
                 script {
-                    echo "🔨 Building image: ${env.IMAGE_TAG}"
+                    echo "🔨 Building: ${env.IMAGE_TAG}"
                     sh "docker build -t ${env.IMAGE_TAG} ."
-                    sh "docker tag ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest"
+                    sh "docker tag  ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest"
                 }
             }
         }
 
         stage('🚀 Push to DockerHub') {
             when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+                expression { env.GIT_BRANCH ==~ /^(origin\/)?master$/ }
             }
             steps {
                 withCredentials([usernamePassword(
@@ -80,126 +67,89 @@ pipeline {
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push ''' + env.IMAGE_TAG + '''
-                            docker push ''' + DOCKERHUB_REPO + ''':latest
-                            docker logout
-                        '''
+                    sh """
+                        echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
+                        docker push ${env.IMAGE_TAG}
+                        docker push ${DOCKERHUB_REPO}:latest
+                        docker logout
+                    """
                 }
             }
         }
 
         stage('🌐 Deploy to VPS') {
             when {
-                expression {
-                    return env.GIT_BRANCH == 'master' || env.GIT_BRANCH == 'origin/master'
-                }
+                expression { env.GIT_BRANCH ==~ /^(origin\/)?master$/ }
             }
             steps {
                 withCredentials([
-                        sshUserPrivateKey(
-                                credentialsId: "${SSH_CREDS}",
-                                keyFileVariable: 'SSH_KEY'
-                        ),
+                        sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY'),
                         file(credentialsId: "${ENV_FILE}", variable: 'DOTENV_FILE'),
-                        usernamePassword(
-                                credentialsId: "${DOCKERHUB_CREDS}",
-                                usernameVariable: 'DOCKER_USER',
-                                passwordVariable: 'DOCKER_PASS'
-                        )
+                        usernamePassword(credentialsId: "${DOCKERHUB_CREDS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                 ]) {
                     script {
-                        def tag = env.IMAGE_TAG
-                        def repo = DOCKERHUB_REPO
-                        def keep = KEEP_IMAGES
-                        def name = APP_CONTAINER_NAME
-                        def port = APP_PORT
-                        def host = VPS_HOST
-                        def user = VPS_USER
-                        def deployScript = """#!/bin/bash
-                                set -e
+                        def sshOpts = "-i \$SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+                        def target = "${VPS_USER}@${VPS_HOST}"
 
-                                echo "=== [1/5] Login DockerHub ==="
-                                echo "\${DOCKER_PASS_ARG}" | docker login -u "\${DOCKER_USER_ARG}" --password-stdin
+                        sh """
+                            ssh ${sshOpts} ${target} "mkdir -p /opt/be-clinic"
+                            scp ${sshOpts} "\$DOTENV_FILE" ${target}:/opt/be-clinic/.env
+                        """
 
-                                echo "=== [2/5] Pull image moi: ${tag} ==="
-                                docker pull ${tag}
+                        sh """
+                            sed \
+                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \
+                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \
+                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \
+                                -e 's|__APP_PORT__|${APP_PORT}|g' \
+                                -e 's|__KEEP_IMAGES__|${KEEP_IMAGES}|g' \
+                                scripts/deploy.sh > /tmp/deploy_clinic.sh
 
-                                echo "=== [3/5] Dung & xoa container cu (neu co) ==="
-                                docker kill ${name} 2>/dev/null || true
-                                docker stop ${name} 2>/dev/null || true
-                                docker rm -f ${name} 2>/dev/null || true
+                            sed \
+                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \
+                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \
+                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \
+                                -e 's|__APP_PORT__|${APP_PORT}|g' \
+                                scripts/healthcheck.sh > /tmp/healthcheck_clinic.sh
 
-                                echo "--- Cho port 8080 release..."
-                                for i in \$(seq 1 15); do
-                                    if ! ss -tlnp | grep -q ':8080 '; then
-                                        echo "--- Port 8080 da free sau \${i}s"
-                                        break
-                                    fi
-                                    if [ "\$i" -eq 15 ]; then
-                                        echo "--- Port van bi chiem sau 15s, thu kill process..."
-                                        # Kill bất kỳ process nào đang giữ 8080 (kể cả non-docker)
-                                        fuser -k 8080/tcp 2>/dev/null || true
-                                        sleep 1
-                                    fi
-                                    sleep 1
-                                done
+                            scp ${sshOpts} /tmp/deploy_clinic.sh      ${target}:/tmp/deploy_clinic.sh
+                            scp ${sshOpts} /tmp/healthcheck_clinic.sh  ${target}:/tmp/healthcheck_clinic.sh
 
-                                echo "=== [4/5] Chay container moi ==="
-                                docker run -d \\
-                                    --name ${name} \\
-                                    --restart unless-stopped \\
-                                    --env-file /opt/be-clinic/.env \\
-                                    -p ${port}:8080 \\
-                                    ${tag}
+                            rm -f /tmp/deploy_clinic.sh /tmp/healthcheck_clinic.sh
+                        """
 
-                                echo "=== [5/5] Don image cu - giu lai ${keep} gan nhat ==="
-                                docker images ${repo} --format '{{.Tag}} {{.ID}}' \\
-                                    | grep -v latest \\
-                                    | sort -r \\
-                                    | tail -n +\$(( ${keep} + 1 )) \\
-                                    | awk '{print \$2}' \\
-                                    | xargs -r docker rmi -f || true
-
-                                docker logout
-                                echo "Deploy thanh cong!"
-                                """
-
-
-                        // Ghi script vào file tạm trên Jenkins agent
-                        writeFile file: '/tmp/deploy.sh', text: deployScript
-
-                        // scp file lên VPS, rồi ssh chạy — truyền credentials qua env vars
-                        sh '''
-                            ssh -i "$SSH_KEY" \
-                                -o StrictHostKeyChecking=no \
-                                -o ConnectTimeout=10 \
-                                ''' + "${user}@${host}" + ''' "mkdir -p /opt/be-clinic"
-                        
-                            scp -i "$SSH_KEY" \
-                                -o StrictHostKeyChecking=no \
-                                -o ConnectTimeout=10 \
-                                "$DOTENV_FILE" ''' + "${user}@${host}" + ''':/opt/be-clinic/.env
-                        '''
-                        sh '''
-                                scp -i "$SSH_KEY" \
-                                    -o StrictHostKeyChecking=no \
-                                    -o ConnectTimeout=10 \
-                                    /tmp/deploy.sh ''' + "${user}@${host}" + ''':/tmp/deploy_clinic.sh
-
-                                ssh -i "$SSH_KEY" \
-                                    -o StrictHostKeyChecking=no \
-                                    -o ConnectTimeout=10 \
-                                    ''' + "${user}@${host}" + ''' \
-                                    "DOCKER_USER_ARG=$DOCKER_USER DOCKER_PASS_ARG=$DOCKER_PASS bash /tmp/deploy_clinic.sh; rm -f /tmp/deploy_clinic.sh"
-                            '''
-
-                        sh 'rm -f /tmp/deploy.sh'
+                        sh """
+                            ssh ${sshOpts} ${target} \
+                                "DOCKER_USER_ARG=\$DOCKER_USER DOCKER_PASS_ARG=\$DOCKER_PASS bash /tmp/deploy_clinic.sh; \
+                                 rm -f /tmp/deploy_clinic.sh"
+                        """
                     }
                 }
             }
         }
+
+        stage('🩺 Health Check') {
+            when {
+                expression { env.GIT_BRANCH ==~ /^(origin\/)?master$/ }
+            }
+            steps {
+                withCredentials([
+                        sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY')
+                ]) {
+                    script {
+                        def sshOpts = "-i \$SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+                        def target = "${VPS_USER}@${VPS_HOST}"
+
+                        sh """
+                            ssh ${sshOpts} ${target} \
+                                "bash /tmp/healthcheck_clinic.sh; \
+                                 rm -f /tmp/healthcheck_clinic.sh"
+                        """
+                    }
+                }
+            }
+        }
+
     }
 
     post {
@@ -247,7 +197,6 @@ pipeline {
 
         always {
             script {
-                // Dọn image trên Jenkins agent sau mỗi build
                 sh "docker rmi ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest 2>/dev/null || true"
             }
         }
@@ -255,12 +204,9 @@ pipeline {
 }
 
 
-// Helper: gửi message text qua Telegram
-// FIX: dùng --data-urlencode thay vì -d text="..." để tránh vỡ shell
-//      khi message chứa ký tự đặc biệt (&, =, newline, quote…)
 def sendTelegram(String message) {
     withCredentials([
-            string(credentialsId: "${TELEGRAM_CREDS}", variable: 'BOT_TOKEN'),
+            string(credentialsId: "${TELEGRAM_BOT_TOKEN}", variable: 'BOT_TOKEN'),
             string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID')
     ]) {
         def tmpFile = "/tmp/tg_msg_${env.BUILD_NUMBER}.txt"
@@ -279,7 +225,7 @@ def sendTelegram(String message) {
 
 def sendTelegramFile(String filePath, String caption = "") {
     withCredentials([
-            string(credentialsId: "${TELEGRAM_CREDS}", variable: 'BOT_TOKEN'),
+            string(credentialsId: "${TELEGRAM_BOT_TOKEN}", variable: 'BOT_TOKEN'),
             string(credentialsId: "${TELEGRAM_CHAT_ID}", variable: 'CHAT_ID')
     ]) {
         def tmpCaption = "/tmp/tg_caption_${env.BUILD_NUMBER}.txt"
