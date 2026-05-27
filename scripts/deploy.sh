@@ -1,12 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-IMAGE_TAG="${IMAGE_TAG}"
-REPO="${DOCKERHUB_REPO}"
-NAME="${APP_NAME}"
-PORT="${APP_PORT}"
-KEEP="${KEEP_IMAGES}"
-ENV_FILE="/opt/be-clinic/.env"
+IMAGE_TAG="__IMAGE_TAG__"
+REPO="__DOCKERHUB_REPO__"
+NAME="__APP_NAME__"
+PORT="__APP_PORT__"
+KEEP="__KEEP_IMAGES__"
+ENV_FILE="__APP_DIR__/.env"       # inject từ Jenkinsfile, không hardcode
+
+# ── Cleanup file tạm khi exit/abort ──────────────────────────
+trap 'rm -f "${BASH_SOURCE[0]}"' EXIT INT TERM
 
 # ── 1. Login DockerHub ────────────────────────────────────────
 echo "=== [1/5] Login DockerHub ==="

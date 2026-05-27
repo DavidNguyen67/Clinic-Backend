@@ -16,11 +16,15 @@ pipeline {
 
         VPS_HOST = '168.144.141.68'
         VPS_USER = 'root'
+
+        APP_DIR = '/opt/be-clinic'
+        LOCAL_DEPLOY_SCRIPT = "/tmp/deploy_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
+        LOCAL_HEALTH_SCRIPT = "/tmp/healthcheck_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
+        VPS_DEPLOY_SCRIPT = "/tmp/deploy_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
+        VPS_HEALTH_SCRIPT = "/tmp/healthcheck_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
     }
 
-    triggers {
-        githubPush()
-    }
+    triggers { githubPush() }
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
@@ -52,7 +56,7 @@ pipeline {
                 script {
                     echo "🔨 Building: ${env.IMAGE_TAG}"
                     sh "docker build -t ${env.IMAGE_TAG} ."
-                    sh "docker tag  ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest"
+                    sh "docker tag ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest"
                 }
             }
         }
@@ -91,37 +95,43 @@ pipeline {
                         def sshOpts = "-i \$SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
                         def target = "${VPS_USER}@${VPS_HOST}"
 
+                        // Tạo thư mục app và upload .env
                         sh """
-                            ssh ${sshOpts} ${target} "mkdir -p /opt/be-clinic"
-                            scp ${sshOpts} "\$DOTENV_FILE" ${target}:/opt/be-clinic/.env
+                            ssh ${sshOpts} ${target} "mkdir -p ${APP_DIR}"
+                            scp ${sshOpts} "\$DOTENV_FILE" ${target}:${APP_DIR}/.env
                         """
 
                         sh """
-                            sed \
-                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \
-                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \
-                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \
-                                -e 's|__APP_PORT__|${APP_PORT}|g' \
-                                -e 's|__KEEP_IMAGES__|${KEEP_IMAGES}|g' \
-                                scripts/deploy.sh > /tmp/deploy_clinic.sh
+                            sed \\
+                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \\
+                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \\
+                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \\
+                                -e 's|__APP_PORT__|${APP_PORT}|g' \\
+                                -e 's|__KEEP_IMAGES__|${KEEP_IMAGES}|g' \\
+                                -e 's|__APP_DIR__|${APP_DIR}|g' \\
+                                scripts/deploy.sh > ${LOCAL_DEPLOY_SCRIPT}
 
-                            sed \
-                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \
-                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \
-                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \
-                                -e 's|__APP_PORT__|${APP_PORT}|g' \
-                                scripts/healthcheck.sh > /tmp/healthcheck_clinic.sh
+                            sed \\
+                                -e 's|__IMAGE_TAG__|${env.IMAGE_TAG}|g' \\
+                                -e 's|__DOCKERHUB_REPO__|${DOCKERHUB_REPO}|g' \\
+                                -e 's|__APP_NAME__|${APP_CONTAINER_NAME}|g' \\
+                                -e 's|__APP_PORT__|${APP_PORT}|g' \\
+                                -e 's|__APP_DIR__|${APP_DIR}|g' \\
+                                -e 's|__BUILD_TAG__|${BUILD_TAG}|g' \\
+                                scripts/healthcheck.sh > ${LOCAL_HEALTH_SCRIPT}
 
-                            scp ${sshOpts} /tmp/deploy_clinic.sh      ${target}:/tmp/deploy_clinic.sh
-                            scp ${sshOpts} /tmp/healthcheck_clinic.sh  ${target}:/tmp/healthcheck_clinic.sh
-
-                            rm -f /tmp/deploy_clinic.sh /tmp/healthcheck_clinic.sh
+                            test -s ${LOCAL_DEPLOY_SCRIPT}  || (echo "❌ deploy script empty!"      && exit 1)
+                            test -s ${LOCAL_HEALTH_SCRIPT}  || (echo "❌ healthcheck script empty!" && exit 1)
                         """
 
+                        sh "scp ${sshOpts} ${LOCAL_DEPLOY_SCRIPT}  ${target}:${VPS_DEPLOY_SCRIPT}"
+                        sh "scp ${sshOpts} ${LOCAL_HEALTH_SCRIPT}  ${target}:${VPS_HEALTH_SCRIPT}"
+
+                        sh "rm -f ${LOCAL_DEPLOY_SCRIPT} ${LOCAL_HEALTH_SCRIPT}"
+
                         sh """
-                            ssh ${sshOpts} ${target} \
-                                "DOCKER_USER_ARG=\$DOCKER_USER DOCKER_PASS_ARG=\$DOCKER_PASS bash /tmp/deploy_clinic.sh; \
-                                 rm -f /tmp/deploy_clinic.sh"
+                            ssh ${sshOpts} ${target} \\
+                                "DOCKER_USER_ARG=\$DOCKER_USER DOCKER_PASS_ARG=\$DOCKER_PASS bash ${VPS_DEPLOY_SCRIPT}"
                         """
                     }
                 }
@@ -141,15 +151,12 @@ pipeline {
                         def target = "${VPS_USER}@${VPS_HOST}"
 
                         sh """
-                            ssh ${sshOpts} ${target} \
-                                "bash /tmp/healthcheck_clinic.sh; \
-                                 rm -f /tmp/healthcheck_clinic.sh"
+                            ssh ${sshOpts} ${target} "bash ${VPS_HEALTH_SCRIPT}"
                         """
                     }
                 }
             }
         }
-
     }
 
     post {
@@ -158,8 +165,8 @@ pipeline {
                 sendTelegram(
                         "✅ *BUILD THÀNH CÔNG*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
-                                "🔖 *Image:* `${env.IMAGE_TAG}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
+                                "🔖 *Image:* `${env.IMAGE_TAG ?: 'N/A'}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
                                 "⏱️ *Thời gian:* ${currentBuild.durationString}"
@@ -172,7 +179,7 @@ pipeline {
                 sendTelegram(
                         "❌ *BUILD THẤT BẠI*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
                                 "⏱️ *Thời gian:* ${currentBuild.durationString}"
@@ -186,7 +193,7 @@ pipeline {
                 sendTelegram(
                         "⚠️ *BUILD BỊ HỦY*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
-                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
                                 "⏱️ *Thời gian:* ${currentBuild.durationString}"
@@ -197,7 +204,25 @@ pipeline {
 
         always {
             script {
-                sh "docker rmi ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest 2>/dev/null || true"
+                if (env.IMAGE_TAG) {
+                    sh "docker rmi ${env.IMAGE_TAG} ${DOCKERHUB_REPO}:latest 2>/dev/null || true"
+                }
+
+                sh "rm -f ${LOCAL_DEPLOY_SCRIPT} ${LOCAL_HEALTH_SCRIPT} 2>/dev/null || true"
+
+                withCredentials([
+                        sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY')
+                ]) {
+                    sh """
+                        ssh -i \$SSH_KEY \\
+                            -o StrictHostKeyChecking=no \\
+                            -o ConnectTimeout=5 \\
+                            -o ServerAliveInterval=3 \\
+                            -o ServerAliveCountMax=2 \\
+                            ${VPS_USER}@${VPS_HOST} \\
+                            "rm -f ${VPS_DEPLOY_SCRIPT} ${VPS_HEALTH_SCRIPT}" 2>/dev/null || true
+                    """
+                }
             }
         }
     }

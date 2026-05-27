@@ -1,14 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-NAME="${APP_NAME}"
-PORT="${APP_PORT}"
-REPO="${DOCKERHUB_REPO}"
-CURRENT_TAG="${IMAGE_TAG}"
+NAME="__APP_NAME__"
+PORT="__APP_PORT__"
+REPO="__DOCKERHUB_REPO__"
+CURRENT_TAG="__IMAGE_TAG__"
+APP_DIR="__APP_DIR__"             # inject từ Jenkinsfile, không hardcode
 
 HEALTH_URL="http://localhost:${PORT}/actuator/health"
 MAX_RETRY=18
 RETRY_INTERVAL=5
+
+# ── File tạm có namespace theo build, tránh conflict BE/FE chạy song song ──
+HC_BODY="/tmp/hc_body___BUILD_TAG__.json"
+
+# ── Cleanup file tạm khi exit/abort ──────────────────────────
+trap 'rm -f "${BASH_SOURCE[0]}" "${HC_BODY}"' EXIT INT TERM
 
 rollback() {
     echo "🔄 Bắt đầu rollback..."
@@ -30,7 +37,7 @@ rollback() {
     docker run -d \
         --name "${NAME}" \
         --restart unless-stopped \
-        --env-file "/opt/be-clinic/.env" \
+        --env-file "${APP_DIR}/.env" \
         -p "${PORT}:8080" \
         "${PREV_IMAGE}"
 
@@ -50,14 +57,13 @@ echo "=== [Health Check] Đợi ${NAME} healthy tại ${HEALTH_URL} ==="
 echo "    Timeout: $((MAX_RETRY * RETRY_INTERVAL))s | Interval: ${RETRY_INTERVAL}s"
 
 for i in $(seq 1 "${MAX_RETRY}"); do
-    HTTP_STATUS=$(curl -s -o /tmp/hc_body.json -w "%{http_code}" "${HEALTH_URL}" || echo "000")
+    HTTP_STATUS=$(curl -s -o "${HC_BODY}" -w "%{http_code}" "${HEALTH_URL}" || echo "000")
 
     if [ "${HTTP_STATUS}" = "200" ]; then
-        APP_STATUS=$(grep -o '"status":"[^"]*"' /tmp/hc_body.json | head -1 | cut -d'"' -f4 || echo "")
+        APP_STATUS=$(grep -o '"status":"[^"]*"' "${HC_BODY}" | head -1 | cut -d'"' -f4 || echo "")
         if [ "${APP_STATUS}" = "UP" ]; then
             echo ""
             echo "✅ App HEALTHY sau $((i * RETRY_INTERVAL))s — status: UP"
-            rm -f /tmp/hc_body.json
             exit 0
         else
             echo "⚠️  HTTP 200 nhưng status=${APP_STATUS} (attempt ${i}/${MAX_RETRY})"
@@ -82,5 +88,4 @@ docker logs --tail=50 "${NAME}" 2>&1 || true
 echo "--- Docker inspect state ---"
 docker inspect "${NAME}" --format='{{json .State}}' 2>/dev/null || true
 
-rm -f /tmp/hc_body.json
 rollback
