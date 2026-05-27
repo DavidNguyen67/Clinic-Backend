@@ -11,8 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -25,9 +24,27 @@ public class UserServiceInv extends BaseService<User, UserRepository> {
     }
 
     @Override
-    protected Specification<User> buildSpec(Map<String, Object> queryParams) {
+    public Specification<User> buildSpec(Map<String, Object> queryParams) {
+        List<UUID> uuids = Optional.ofNullable((List<?>) queryParams.get("ids"))
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(Object::toString)
+                .map(CommonService::safeParseUuid)
+                .filter(Objects::nonNull)
+                .toList();
+
+        UUID excludeUuid = Optional.ofNullable(queryParams.get("excludeId"))
+                .map(Object::toString)
+                .map(CommonService::safeParseUuid)
+                .orElse(null);
+
+        List<UUID> excludeUuids = excludeUuid != null
+                ? List.of(excludeUuid)
+                : Collections.emptyList();
+
         return Specification.<User>unrestricted()
                 .and(notDeleted())
+                .and(multiFieldIn(uuids, new String[]{"id"}))
                 .and(fieldEquals("gender", CommonService.parseToEnum(User.Gender.class, queryParams.get("gender"))))
                 .and(fieldEquals("status", CommonService.parseToEnum(User.UserStatus.class, queryParams.get("status"))))
                 .and(multiFieldIn(
@@ -37,6 +54,7 @@ public class UserServiceInv extends BaseService<User, UserRepository> {
                 .and(multiFieldEquals(queryParams.get("email"),
                         new String[]{"email"}
                 ))
+                .and(multiFieldNotIn(excludeUuids, new String[]{"id"}))
                 .and(fieldLike("fullName", (String) queryParams.get("fullName")));
     }
 

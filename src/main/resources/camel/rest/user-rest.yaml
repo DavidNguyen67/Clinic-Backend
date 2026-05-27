@@ -18,3 +18,5 @@
     get:
       - path: /statistics
         to: direct:public-user-statistics
+      - path: /
+        to: direct:public-user-list

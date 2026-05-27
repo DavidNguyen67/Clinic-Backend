@@ -48,6 +48,8 @@ public class ResponseMessageDto {
 
     private boolean deleted;
 
+    private String tempId; // Dùng để client match optimistic message
+
     public static ResponseMessageDto from(MessageDocument document) {
         return ResponseMessageDto.builder()
                 .id(document.getId())

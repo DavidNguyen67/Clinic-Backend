@@ -1,0 +1,20 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: presence-list-route
+    from:
+      uri: direct:public-presence-list
+      steps:
+        - process:
+            ref: presenceListProcessor
+        - marshal:
+            json: { }

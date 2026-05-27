@@ -9,7 +9,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateMessageDto {
-
     @NotBlank(message = "Conversation ID is required")
     private String conversationId;
 
@@ -20,4 +19,6 @@ public class CreateMessageDto {
     private MessageType type; // TEXT, IMAGE, FILE
 
     private String replyTo; // nullable — messageId nếu trả lời
+
+    private String tempId; // Dùng để client match optimistic message
 }

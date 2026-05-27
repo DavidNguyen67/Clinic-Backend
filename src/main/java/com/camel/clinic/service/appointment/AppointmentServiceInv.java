@@ -4,6 +4,7 @@ import com.camel.clinic.dto.ApiPaged;
 import com.camel.clinic.dto.DateRange;
 import com.camel.clinic.dto.appointment.AppointmentStatisticsDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
+import com.camel.clinic.dto.appointment.ResponseDoctorAppointmentDto;
 import com.camel.clinic.entity.Appointment;
 import com.camel.clinic.entity.Invoice;
 import com.camel.clinic.entity.Specialty;
@@ -314,14 +315,14 @@ public class AppointmentServiceInv extends BaseService<Appointment, AppointmentR
         return ResponseEntity.ok(stats);
     }
 
-    private Map<String, Object> buildStat(long current, long last) {
+    private ResponseDoctorAppointmentDto buildStat(long current, long last) {
+        ResponseDoctorAppointmentDto dto = new ResponseDoctorAppointmentDto();
+        dto.setValue(current);
+        dto.setLastMonth(last);
+        dto.setDelta(current - last);
         double deltaPercent = last == 0 ? 0.0 : (double) (current - last) / last * 100;
-        Map<String, Object> m = new HashMap<>();
-        m.put("value", current);
-        m.put("lastMonth", last);
-        m.put("delta", current - last);          // e.g. +13 / -3
-        m.put("deltaPercent", Math.round(deltaPercent * 10) / 10.0); // e.g. +11.0 %
-        return m;
+        dto.setDeltaPercent(Math.round(deltaPercent * 10) / 10.0);
+        return dto;
     }
 
 }

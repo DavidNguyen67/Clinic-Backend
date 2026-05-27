@@ -20,6 +20,16 @@
             json: { }
 
 - route:
+    id: public-user-list-route
+    from:
+      uri: direct:public-user-list
+      steps:
+        - process:
+            ref: userListProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: user-statistics-route
     from:
       uri: direct:user-statistics

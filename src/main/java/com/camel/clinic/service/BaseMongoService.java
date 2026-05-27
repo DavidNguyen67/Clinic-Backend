@@ -15,9 +15,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -46,7 +44,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // CREATE
     // ─────────────────────────────────────────────
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> create(T data) {
         try {
             T init = documentFactory.get();
@@ -55,13 +53,8 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
             T saved = repository.save(init);
             log.info("Created document: {}", saved.getId());
 
-            URI location = ServletUriComponentsBuilder
-                    .fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(saved.getId())
-                    .toUri();
 
-            return ResponseEntity.created(location).body(saved);
+            return ResponseEntity.created(null).body(saved);
         } catch (Exception e) {
             log.error("Error creating document: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create document: " + e.getMessage(), e);
@@ -72,7 +65,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // BULK CREATE
     // ─────────────────────────────────────────────
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> bulkCreate(List<T> dataList) {
         try {
             if (dataList == null || dataList.isEmpty()) {
@@ -100,7 +93,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // ─────────────────────────────────────────────
     // LIST (pagination + filter)
     // ─────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public ResponseEntity<?> list(Map<String, Object> queryParams) {
         try {
             int page = parseIntParam(queryParams, "page", 0);
@@ -147,7 +140,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // ─────────────────────────────────────────────
     // COUNT
     // ─────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public ResponseEntity<?> count() {
         try {
             Query query = new Query(notDeleted());
@@ -163,7 +156,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // ─────────────────────────────────────────────
     // RETRIEVE
     // ─────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public ResponseEntity<?> retrieve(String id, String fields) {
         try {
             T entity = repository.findById(id)
@@ -184,7 +177,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // UPDATE (partial — chỉ ghi đè field không null)
     // ─────────────────────────────────────────────
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> update(String id, T data, String fields) {
         try {
             T existing = repository.findById(id)
@@ -210,7 +203,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
     // DELETE (soft)
     // ─────────────────────────────────────────────
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> delete(String id) {
         try {
             T entity = repository.findById(id)
@@ -230,7 +223,7 @@ public abstract class BaseMongoService<T extends SofDeleteDocument, R extends Mo
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<?> restore(String id) {
         try {
             Query query = new Query(Criteria.where("_id").is(id)

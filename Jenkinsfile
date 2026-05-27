@@ -14,8 +14,9 @@ pipeline {
         TELEGRAM_CREDS = 'telegram-bot-token'
         TELEGRAM_CHAT_ID = 'telegram-chat-id'
         JENKINS_API_CREDS = 'jenkins-api-credentials'
+        ENV_FILE = 'be-clinic-env'
 
-        VPS_HOST = '159.223.41.100'
+        VPS_HOST = '168.144.141.68'
         VPS_USER = 'root'
     }
 
@@ -101,6 +102,7 @@ pipeline {
                                 credentialsId: "${SSH_CREDS}",
                                 keyFileVariable: 'SSH_KEY'
                         ),
+                        file(credentialsId: "${ENV_FILE}", variable: 'DOTENV_FILE'),
                         usernamePassword(
                                 credentialsId: "${DOCKERHUB_CREDS}",
                                 usernameVariable: 'DOCKER_USER',
@@ -115,7 +117,6 @@ pipeline {
                         def port = APP_PORT
                         def host = VPS_HOST
                         def user = VPS_USER
-
                         def deployScript = """#!/bin/bash
                                 set -e
 
@@ -149,6 +150,7 @@ pipeline {
                                 docker run -d \\
                                     --name ${name} \\
                                     --restart unless-stopped \\
+                                    --env-file /opt/be-clinic/.env \\
                                     -p ${port}:8080 \\
                                     ${tag}
 
@@ -163,10 +165,23 @@ pipeline {
                                 docker logout
                                 echo "Deploy thanh cong!"
                                 """
+
+
                         // Ghi script vào file tạm trên Jenkins agent
                         writeFile file: '/tmp/deploy.sh', text: deployScript
 
                         // scp file lên VPS, rồi ssh chạy — truyền credentials qua env vars
+                        sh '''
+                            ssh -i "$SSH_KEY" \
+                                -o StrictHostKeyChecking=no \
+                                -o ConnectTimeout=10 \
+                                ''' + "${user}@${host}" + ''' "mkdir -p /opt/be-clinic"
+                        
+                            scp -i "$SSH_KEY" \
+                                -o StrictHostKeyChecking=no \
+                                -o ConnectTimeout=10 \
+                                "$DOTENV_FILE" ''' + "${user}@${host}" + ''':/opt/be-clinic/.env
+                        '''
                         sh '''
                                 scp -i "$SSH_KEY" \
                                     -o StrictHostKeyChecking=no \
@@ -193,6 +208,7 @@ pipeline {
                 sendTelegram(
                         "✅ *BUILD THÀNH CÔNG*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
                                 "🔖 *Image:* `${env.IMAGE_TAG}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
@@ -206,6 +222,7 @@ pipeline {
                 sendTelegram(
                         "❌ *BUILD THẤT BẠI*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
                                 "⏱️ *Thời gian:* ${currentBuild.durationString}"
@@ -219,6 +236,7 @@ pipeline {
                 sendTelegram(
                         "⚠️ *BUILD BỊ HỦY*\n" +
                                 "📦 *Project:* `${env.JOB_NAME}`\n" +
+                                "📝 *Commit:* `${env.GIT_COMMIT_SHORT}`\n" +
                                 "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                                 "🌿 *Branch:* `${env.GIT_BRANCH}`\n" +
                                 "⏱️ *Thời gian:* ${currentBuild.durationString}"

@@ -1,21 +1,3 @@
--- =============================================================================
--- V1__init_clinic_schema_merged.sql
--- Schema tổng hợp từ V1 -> V7 (trạng thái cuối cùng)
--- Các thay đổi đã được áp dụng trực tiếp:
---   V2: Thêm specialty_id vào appointment
---   V3: Bỏ date_of_birth khỏi patient_profile
---   V4: Chuyển date_of_birth trong user từ VARCHAR -> TIMESTAMP
---   V5: Bỏ cột status khỏi doctors và staffProfile
---   V6: Thay doctor_schedules bằng doctor_schedule_exception
---   V7: Đổi tên doctors -> doctor_profile, staffProfile -> staff_profile
--- =============================================================================
-
-CREATE TABLE role
-(
-    id   UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE
-);
-
 CREATE TABLE users
 (
     id             UUID PRIMARY KEY,
@@ -78,7 +60,6 @@ CREATE TABLE patient_profile
     deleted_at       TIMESTAMP,
     user_id          UUID        NOT NULL UNIQUE,
     patient_code     VARCHAR(20) NOT NULL UNIQUE,
-    gender           VARCHAR(10),
     address          TEXT,
     insurance_number VARCHAR(100),
     blood_type       VARCHAR(5),

@@ -45,7 +45,7 @@ public class MessageServiceImp implements MessageService {
         message.setSenderId(senderId);
         message.setContent(requestBody.getContent());
         message.setType(requestBody.getType());
-        message.setStatus(MessageStatus.SENT);
+        message.setStatus(MessageStatus.DELIVERED);
         message.setReplyTo(requestBody.getReplyTo());
 
         MessageDocument saved = (MessageDocument) serviceInv.create(message).getBody();
@@ -104,5 +104,24 @@ public class MessageServiceImp implements MessageService {
     @Override
     public ResponseEntity<?> restore(String id) {
         return serviceInv.restore(id);
+    }
+
+    public String recallMessage(String messageId, String userId) {
+        Object body = serviceInv.retrieve(messageId, null).getBody();
+        if (!(body instanceof ResponseMessageDto existing)) {
+            throw new BadRequestException("Message not found");
+        }
+
+        if (!existing.getSenderId().equals(userId)) {
+            throw new BadRequestException("You are not allowed to recall this message");
+        }
+
+        MessageDocument patch = new MessageDocument();
+        patch.setStatus(MessageStatus.RECALLED);
+        patch.setContent(null);
+
+        serviceInv.update(messageId, patch, null);
+
+        return existing.getConversationId(); // trả về để socket biết broadcast về conversation nào
     }
 }

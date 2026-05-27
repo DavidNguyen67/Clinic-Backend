@@ -43,7 +43,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 : List.of(new SimpleGrantedAuthority(user.getRole().name()));
 
         return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
+                .withUsername(String.valueOf(user.getId()))
                 .password(user.getPasswordHash())
                 .authorities(authorities)
                 .accountExpired(false)
