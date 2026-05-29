@@ -40,26 +40,26 @@ public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorPr
         List<UUID> uuids = CommonService.parseToList(ids, UUID::fromString);
 
         return Specification.<DoctorProfile>unrestricted()
-                .and(notDeleted())
-                .and(multiFieldIn(uuids, new String[]{"id"}))
-                .and(multiFieldGreaterThan(CommonService.parseToLong(queryParams.get("minFee")), true,
-                        new String[]{"consultationFee"}))
-                .and(multiFieldLessThan(CommonService.parseToLong(queryParams.get("maxFee")), true,
-                        new String[]{"consultationFee"}))
-                .and((root, query, cb) -> {
-                    assert query != null;
-                    if (!query.getResultType().equals(Long.class)) {
-                        root.fetch("user", JoinType.LEFT);
-                        Fetch<DoctorProfile, Specialty> specialtyFetch = root.fetch("specialty", JoinType.LEFT);
-                        specialtyFetch.fetch("services", JoinType.LEFT);
-                        query.distinct(true);
-                    }
-                    return cb.conjunction();
-                })
-                .and(fieldEquals("isFeatured", CommonService.parseBoolean(queryParams.get("isFeatured"))))
-                .and(nestedFieldLike("user", "fullName", (String) queryParams.get("fullName")))
-                .and(nestedFieldLike("specialty", "name", (String) queryParams.get("specialtyName")))
-                .and(nestedFieldEqual("specialty", "id", CommonService.parseToUuid(queryParams.get("specialtyId"))));
+            .and(notDeleted())
+            .and(multiFieldIn(uuids, new String[]{"id"}))
+            .and(multiFieldGreaterThan(CommonService.parseToLong(queryParams.get("minFee")), true,
+                new String[]{"consultationFee"}))
+            .and(multiFieldLessThan(CommonService.parseToLong(queryParams.get("maxFee")), true,
+                new String[]{"consultationFee"}))
+            .and((root, query, cb) -> {
+                assert query != null;
+                if (!query.getResultType().equals(Long.class)) {
+                    root.fetch("user", JoinType.LEFT);
+                    Fetch<DoctorProfile, Specialty> specialtyFetch = root.fetch("specialty", JoinType.LEFT);
+                    specialtyFetch.fetch("services", JoinType.LEFT);
+                    query.distinct(true);
+                }
+                return cb.conjunction();
+            })
+            .and(fieldEquals("isFeatured", CommonService.parseBoolean(queryParams.get("isFeatured"))))
+            .and(nestedFieldLike("user", "fullName", (String) queryParams.get("fullName")))
+            .and(nestedFieldLike("specialty", "name", (String) queryParams.get("specialtyName")))
+            .and(nestedFieldEqual("specialty", "id", CommonService.parseToUuid(queryParams.get("specialtyId"))));
     }
 
     public ResponseEntity<?> list(Map<String, Object> queryParams) {
@@ -70,8 +70,8 @@ public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorPr
             String sortDir = (String) queryParams.getOrDefault("sortDir", "asc");
 
             Sort sort = sortDir.equalsIgnoreCase("desc")
-                    ? Sort.by(sortBy).descending()
-                    : Sort.by(sortBy).ascending();
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
 
             Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -80,16 +80,16 @@ public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorPr
             Page<DoctorProfile> resultPage = repository.findAll(spec, pageable);
 
             List<?> content = resultPage.getContent()
-                    .stream()
-                    .map(ResponseDoctorProfileDto::of)
-                    .toList();
+                .stream()
+                .map(ResponseDoctorProfileDto::of)
+                .toList();
 
             ApiPaged<?> paged = ApiPaged.of(
-                    content,
-                    resultPage.getTotalElements(),
-                    resultPage.getNumber(),
-                    resultPage.getSize(),
-                    resultPage.getTotalPages()
+                content,
+                resultPage.getTotalElements(),
+                resultPage.getNumber(),
+                resultPage.getSize(),
+                resultPage.getTotalPages()
             );
 
             log.info("Listed {} entities (page={}, size={})", resultPage.getNumberOfElements(), page, size);

@@ -29,14 +29,14 @@ public class ConversationServiceInv extends BaseMongoService<ConversationDocumen
         String conversationId = (String) queryParams.get("conversationId");
         String keyword = (String) queryParams.get("keyword");
         List<ConversationType> type =
-                parseEnumList(queryParams.get("type"), ConversationType.class);
+            parseEnumList(queryParams.get("type"), ConversationType.class);
 
         return andAll(
-                notDeleted(),
-                multiFieldIn(userId != null ? List.of(userId) : List.of(), new String[]{"participants"}),
-                multiFieldIn(type, new String[]{"type"}),
-                multiFieldLike(keyword, new String[]{"name"}),
-                multiFieldEquals(conversationId, new String[]{"_id"})
+            notDeleted(),
+            multiFieldIn(userId != null ? List.of(userId) : List.of(), new String[]{"participants"}),
+            multiFieldIn(type, new String[]{"type"}),
+            multiFieldLike(keyword, new String[]{"name"}),
+            multiFieldEquals(conversationId, new String[]{"_id"})
         );
     }
 

@@ -38,12 +38,12 @@ public class ConversationServiceImp implements ConversationService {
     @Override
     public ResponseEntity<?> create(CreateConversationDto requestBody) {
         if (requestBody.getType() == ConversationType.DIRECT
-                && requestBody.getParticipants().size() != 2) {
+            && requestBody.getParticipants().size() != 2) {
             throw new BadRequestException("DIRECT conversation must have exactly 2 participants.");
         }
 
         if (requestBody.getType() == ConversationType.GROUP
-                && (requestBody.getName() == null || requestBody.getName().isBlank())) {
+            && (requestBody.getName() == null || requestBody.getName().isBlank())) {
             throw new BadRequestException("GROUP conversation must have a name.");
         }
 
@@ -59,7 +59,7 @@ public class ConversationServiceImp implements ConversationService {
     @Override
     public ResponseEntity<?> update(String id, UpdateConversationDto requestBody) {
         ResponseConversationDto existing = serviceInv.retrieve(id, null).getBody()
-                instanceof ResponseConversationDto c ? c : null;
+            instanceof ResponseConversationDto c ? c : null;
 
         if (existing == null) {
             throw new BadRequestException("Conversation with ID " + id + " not found");
