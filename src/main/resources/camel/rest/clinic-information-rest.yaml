@@ -1,0 +1,5 @@
+- rest:
+    path: /v1/public/clinic-information
+    get:
+      - path: /
+        to: direct:public-clinic-information-get

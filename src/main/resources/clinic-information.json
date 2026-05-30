@@ -1,0 +1,16 @@
+{
+  "clinic": {
+    "name": "Phòng Khám An Khang",
+    "description": "Chăm sóc sức khỏe toàn diện",
+    "about": "Với hơn 15 năm kinh nghiệm, chúng tôi cam kết mang đến dịch vụ y tế chất lượng cao nhất."
+  },
+  "contact": {
+    "address": "123 Đường ABC, Quận XYZ, TP. Hà Nội",
+    "hotline": "1900-xxxx",
+    "email": "info@phongkhamankhang.vn",
+    "workingHours": {
+      "mondayToSaturday": "7:00 - 21:00",
+      "sunday": "8:00 - 17:00"
+    }
+  }
+}

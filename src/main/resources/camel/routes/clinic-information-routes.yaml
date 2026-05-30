@@ -1,0 +1,20 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: public-clinic-information-get-route
+    from:
+      uri: direct:public-clinic-information-get
+      steps:
+        - process:
+            ref: clinicInformationProcessor
+        - marshal:
+            json: { }
