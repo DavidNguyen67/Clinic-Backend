@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -25,7 +26,7 @@ public class ClinicInformationProcessor implements Processor {
         InputStream in = resource.getInputStream();
         ResponseClinicInformation settings = objectMapper.readValue(in, new TypeReference<>() {
         });
-        exchange.getIn().setBody(settings);
+        exchange.getIn().setBody(ResponseEntity.ok(settings));
     }
 }
 
