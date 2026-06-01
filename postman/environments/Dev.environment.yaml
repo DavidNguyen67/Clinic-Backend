@@ -1,5 +1,0 @@
-name: Dev
-values:
-  - key: baseUrl
-    value: ''
-    enabled: true
