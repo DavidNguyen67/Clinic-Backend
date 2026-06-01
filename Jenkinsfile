@@ -168,7 +168,7 @@ pipeline {
 
         failure {
             script {
-                saveAndSendLog(
+                sendTelegramWithFile(
                     "❌ *BUILD THẤT BẠI*\n" +
                     "📦 *Project:* `${env.JOB_NAME}`\n" +
                     "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
@@ -181,7 +181,7 @@ pipeline {
 
         aborted {
             script {
-                saveAndSendLog(
+                sendTelegramWithFile(
                     "⚠️ *BUILD BỊ HỦY*\n" +
                     "📦 *Project:* `${env.JOB_NAME}`\n" +
                     "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
@@ -238,25 +238,6 @@ def sendTelegram(String message) {
     }
 }
 
-def sendTelegramFile(String filePath, String caption = "") {
-    withCredentials([
-        string(credentialsId: "${TELEGRAM_BOT_TOKEN}", variable: 'BOT_TOKEN'),
-        string(credentialsId: "${TELEGRAM_CHAT_ID}",   variable: 'CHAT_ID')
-    ]) {
-        def tmpCaption = "/tmp/tg_caption_${env.BUILD_NUMBER}.txt"
-        writeFile file: tmpCaption, text: caption
-        sh """
-            CAPTION=\$(cat ${tmpCaption})
-            curl -s -X POST "https://api.telegram.org/bot\${BOT_TOKEN}/sendDocument" \\
-                -F chat_id="\${CHAT_ID}" \\
-                -F parse_mode="Markdown" \\
-                -F caption="\${CAPTION}" \\
-                -F document=@"${filePath}"
-            rm -f ${tmpCaption}
-        """
-    }
-}
-
 def getLogContent() {
     withCredentials([
         usernamePassword(
@@ -275,9 +256,24 @@ def getLogContent() {
     }
 }
 
-def saveAndSendLog(String caption = "") {
+def sendTelegramWithFile(String caption = "") {
     def logFile = "/tmp/build_log_${env.BUILD_NUMBER}.txt"
     writeFile file: logFile, text: getLogContent()
-    sendTelegramFile(logFile, caption)
+    withCredentials([
+            string(credentialsId: "${TELEGRAM_BOT_TOKEN}", variable: 'BOT_TOKEN'),
+            string(credentialsId: "${TELEGRAM_CHAT_ID}",   variable: 'CHAT_ID')
+        ]) {
+            def tmpCaption = "/tmp/tg_caption_${env.BUILD_NUMBER}.txt"
+            writeFile file: tmpCaption, text: caption
+            sh """
+                CAPTION=\$(cat ${tmpCaption})
+                curl -s -X POST "https://api.telegram.org/bot\${BOT_TOKEN}/sendDocument" \\
+                    -F chat_id="\${CHAT_ID}" \\
+                    -F parse_mode="Markdown" \\
+                    -F caption="\${CAPTION}" \\
+                    -F document=@"${logFile}"
+                rm -f ${tmpCaption}
+            """
+        }
     sh "rm -f ${logFile}"
 }
