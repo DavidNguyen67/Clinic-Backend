@@ -31,4 +31,6 @@ public class UpdateDoctorProfileDto {
     private BigDecimal consultationFee;
 
     private Boolean isFeatured;
+
+    private Integer totalPatients;
 }

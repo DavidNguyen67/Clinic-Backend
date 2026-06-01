@@ -3,6 +3,7 @@ package com.camel.clinic.service.appointment;
 import com.camel.clinic.dto.appointment.CreateAppointmentDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
 import com.camel.clinic.dto.appointment.UpdateAppointmentDto;
+import com.camel.clinic.dto.doctorProfile.UpdateDoctorProfileDto;
 import com.camel.clinic.dto.invoice.UpdateInvoiceDto;
 import com.camel.clinic.dto.invoiceItem.UpdateInvoiceItemDto;
 import com.camel.clinic.entity.*;
@@ -70,27 +71,27 @@ public class AppointmentServiceImp implements AppointmentService {
 
         if (!doctorScheduleExceptionServiceInv.isDoctorAvailable(doctorProfileId, appointmentDate)) {
             throw new BadRequestException(
-                    "Doctor is not available at the selected time. Please choose a different time or doctor."
+                "Doctor is not available at the selected time. Please choose a different time or doctor."
             );
         }
 
         if (serviceInv.isExistAppointmentForDoctorAt(doctorProfileId, appointmentDate, null)) {
             throw new BadRequestException(
-                    "Doctor already has an appointment at the selected time. Please choose a different time or doctor."
+                "Doctor already has an appointment at the selected time. Please choose a different time or doctor."
             );
         }
 
         DoctorProfile doctorProfile = (DoctorProfile) doctorProfileServiceInv
-                .retrieve(doctorProfileId, null)
-                .getBody();
+            .retrieve(doctorProfileId, null)
+            .getBody();
 
         if (doctorProfile == null) {
             throw new BadRequestException("Doctor profile with ID " + doctorProfileId + " not found");
         }
 
         PatientProfile patientProfile = (PatientProfile) patientProfileServiceInv
-                .retrieve(patientProfileId, null)
-                .getBody();
+            .retrieve(patientProfileId, null)
+            .getBody();
 
         if (patientProfile == null) {
             throw new BadRequestException("Patient profile with ID " + patientProfileId + " not found");
@@ -118,7 +119,7 @@ public class AppointmentServiceImp implements AppointmentService {
         Role.RoleName actorRole = resolveActorRole();
 
         ResponseAppointmentDto appointment = serviceInv.retrieve(id, null).getBody()
-                instanceof ResponseAppointmentDto a ? a : null;
+            instanceof ResponseAppointmentDto a ? a : null;
 
         if (appointment == null) {
             throw new BadRequestException("Appointment with ID " + id + " not found");
@@ -127,8 +128,8 @@ public class AppointmentServiceImp implements AppointmentService {
         Appointment.AppointmentStatus currentStatus = appointment.getStatus();
 
         Appointment.AppointmentStatus targetStatus = requestBody.getStatus() != null
-                ? requestBody.getStatus()
-                : currentStatus;
+            ? requestBody.getStatus()
+            : currentStatus;
 
         AppointmentStatusTransition.validate(currentStatus, targetStatus, actorRole);
 
@@ -138,17 +139,17 @@ public class AppointmentServiceImp implements AppointmentService {
 
         if (!canEditDetails && hasDetailChanges(requestBody)) {
             throw new BadRequestException(String.format(
-                    "Cannot change appointment details when status is %s. " +
-                            "Only status transition is allowed.", currentStatus));
+                "Cannot change appointment details when status is %s. " +
+                    "Only status transition is allowed.", currentStatus));
         }
 
         String targetDoctorId = (canEditDetails && requestBody.getDoctorProfileId() != null)
-                ? requestBody.getDoctorProfileId()
-                : appointment.getDoctorProfileId();
+            ? requestBody.getDoctorProfileId()
+            : appointment.getDoctorProfileId();
 
         Date targetDate = (canEditDetails && requestBody.getAppointmentDate() != null)
-                ? requestBody.getAppointmentDate()
-                : appointment.getAppointmentDate();
+            ? requestBody.getAppointmentDate()
+            : appointment.getAppointmentDate();
 
         boolean doctorChanged = canEditDetails && requestBody.getDoctorProfileId() != null;
         boolean dateChanged = canEditDetails && requestBody.getAppointmentDate() != null;
@@ -159,22 +160,22 @@ public class AppointmentServiceImp implements AppointmentService {
         if (doctorChanged || dateChanged || isReactivation) {
             if (!doctorScheduleExceptionServiceInv.isDoctorAvailable(targetDoctorId, targetDate)) {
                 throw new BadRequestException(
-                        "Doctor is not available at the selected time. Please choose a different time or doctor.");
+                    "Doctor is not available at the selected time. Please choose a different time or doctor.");
             }
             if (serviceInv.isExistAppointmentForDoctorAt(targetDoctorId, targetDate, id)) {
                 throw new BadRequestException(
-                        "Doctor already has an appointment at the selected time. Please choose a different time or doctor.");
+                    "Doctor already has an appointment at the selected time. Please choose a different time or doctor.");
             }
         }
 
         Appointment appointmentEntity = appointmentRepository
-                .findById(UUID.fromString(id))
-                .orElseThrow(() -> new BadRequestException("Appointment with ID " + id + " not found"));
+            .findById(UUID.fromString(id))
+            .orElseThrow(() -> new BadRequestException("Appointment with ID " + id + " not found"));
 
         if (targetStatus == CONFIRMED && appointmentEntity.getStatus() != CONFIRMED) {
             String invoiceId = requestBody.getInvoiceId();
             Invoice invoice = invoiceRepository.findById(CommonService.parseToUuid(invoiceId))
-                    .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
+                .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
 
             List<ClinicService> services = appointmentEntity.getSpecialty().getServices();
 
@@ -199,20 +200,29 @@ public class AppointmentServiceImp implements AppointmentService {
         if (targetStatus == CHECKED_IN && appointmentEntity.getStatus() != CHECKED_IN) {
             String invoiceId = requestBody.getInvoiceId();
             Invoice invoice = invoiceRepository.findById(CommonService.parseToUuid(invoiceId))
-                    .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
+                .orElseThrow(() -> new BadRequestException("Invoice with ID " + invoiceId + " not found"));
 
             invoice.setStatus(Invoice.InvoiceStatus.PENDING);
             invoiceRepository.save(invoice);
         }
 
+        if (targetStatus == COMPLETED && appointmentEntity.getStatus() != COMPLETED) {
+            UpdateDoctorProfileDto doctorProfileRequest = new UpdateDoctorProfileDto();
+            doctorProfileRequest.setTotalPatients(appointmentEntity.getDoctorProfile().getTotalPatients() + 1);
+            DoctorProfile doctorProfile = serviceInv.retrieve(id, null).getBody() instanceof DoctorProfile dp ? dp : null;
+            String doctorProfileId = doctorProfile.getId().toString();
+
+            return doctorProfileServiceInv.update(doctorProfileId, doctorProfile, null);
+        }
+
         if (doctorChanged) {
             DoctorProfile newDoctor = (DoctorProfile) doctorProfileServiceInv
-                    .retrieve(targetDoctorId, null)
-                    .getBody();
+                .retrieve(targetDoctorId, null)
+                .getBody();
             appointmentEntity.setDoctorProfile(newDoctor);
             appointmentEntity.setSpecialty(newDoctor != null
-                    ? newDoctor.getSpecialty()
-                    : appointmentEntity.getSpecialty());
+                ? newDoctor.getSpecialty()
+                : appointmentEntity.getSpecialty());
         }
 
         appointmentEntity.setStatus(targetStatus);
@@ -252,25 +262,25 @@ public class AppointmentServiceImp implements AppointmentService {
         if (roles.contains(Role.RoleName.ADMIN)) return Role.RoleName.ADMIN;
 
         return roles.stream()
-                .map(r -> {
-                    try {
-                        return Role.RoleName.valueOf(r.name());
-                    } catch (IllegalArgumentException e) {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElseThrow(() -> new BadRequestException("Cannot determine actor role"));
+            .map(r -> {
+                try {
+                    return Role.RoleName.valueOf(r.name());
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            })
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow(() -> new BadRequestException("Cannot determine actor role"));
     }
 
     private boolean hasDetailChanges(UpdateAppointmentDto dto) {
         return dto.getDoctorProfileId() != null
-                || dto.getAppointmentDate() != null
-                || dto.getBookingType() != null
-                || dto.getReason() != null
-                || dto.getSymptoms() != null
-                || dto.getNotes() != null;
+            || dto.getAppointmentDate() != null
+            || dto.getBookingType() != null
+            || dto.getReason() != null
+            || dto.getSymptoms() != null
+            || dto.getNotes() != null;
     }
 }
 

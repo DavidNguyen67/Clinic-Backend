@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Map;
 
 @Service
@@ -50,13 +52,13 @@ public class ReviewServiceImp implements ReviewService {
     public ResponseEntity<?> create(CreateReviewDto requestBody) {
         Review review = new Review();
         PatientProfile patientProfile = patientProfileRepository.findById(CommonService.parseToUuid(requestBody.getPatientProfileId()))
-                .orElseThrow(() -> new RuntimeException("Patient profile not found with ID: " + requestBody.getPatientProfileId()));
+            .orElseThrow(() -> new RuntimeException("Patient profile not found with ID: " + requestBody.getPatientProfileId()));
 
         DoctorProfile doctorProfile = doctorProfileRepository.findById(CommonService.parseToUuid(requestBody.getDoctorProfileId()))
-                .orElseThrow(() -> new RuntimeException("Doctor profile not found with ID: " + requestBody.getDoctorProfileId()));
+            .orElseThrow(() -> new RuntimeException("Doctor profile not found with ID: " + requestBody.getDoctorProfileId()));
 
         Appointment appointment = appointmentRepository.findById(CommonService.parseToUuid(requestBody.getAppointmentId()))
-                .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + requestBody.getAppointmentId()));
+            .orElseThrow(() -> new RuntimeException("Appointment not found with ID: " + requestBody.getAppointmentId()));
 
         review.setAppointment(appointment);
         review.setDoctorProfile(doctorProfile);
@@ -65,7 +67,23 @@ public class ReviewServiceImp implements ReviewService {
         review.setTitle(requestBody.getTitle());
         review.setContent(requestBody.getContent());
 
-        return serviceInv.create(review);
+        ResponseEntity<?> response = serviceInv.create(review);
+
+        doctorProfile.setTotalReviews(doctorProfile.getTotalReviews() + 1);
+
+        BigDecimal totalRating = doctorProfile.getAverageRating()
+            .multiply(BigDecimal.valueOf(doctorProfile.getTotalReviews() - 1))
+            .add(BigDecimal.valueOf(review.getRating()));
+
+        doctorProfile.setAverageRating(totalRating.divide(
+            BigDecimal.valueOf(doctorProfile.getTotalReviews()),
+            2,
+            RoundingMode.HALF_UP
+        ));
+
+        doctorProfileRepository.save(doctorProfile);
+
+        return response;
     }
 
     @Override
@@ -79,7 +97,7 @@ public class ReviewServiceImp implements ReviewService {
         review.setRating(requestBody.getRating());
         review.setTitle(requestBody.getTitle());
         review.setContent(requestBody.getContent());
-        
+
         return null;
     }
 

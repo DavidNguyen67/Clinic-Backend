@@ -114,6 +114,7 @@ public class DoctorProfileServiceImp implements DoctorProfileService {
         doctorProfile.setBio(requestBody.getBio());
         doctorProfile.setConsultationFee(requestBody.getConsultationFee());
         doctorProfile.setIsFeatured(requestBody.getIsFeatured());
+        doctorProfile.setTotalPatients(requestBody.getTotalPatients());
 
         String specialtyId = requestBody.getSpecialtyId();
         if (specialtyId != null && !specialtyId.isEmpty()) {
