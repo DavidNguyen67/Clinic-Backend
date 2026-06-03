@@ -1,29 +1,39 @@
 package com.camel.clinic.service.doctorProfile;
 
 import com.camel.clinic.dto.doctorProfile.CreateDoctorProfileDto;
+import com.camel.clinic.dto.doctorProfile.ResponseDoctorProfileDetailDto;
 import com.camel.clinic.dto.doctorProfile.UpdateDoctorProfileDto;
 import com.camel.clinic.entity.DoctorProfile;
+import com.camel.clinic.entity.DoctorScheduleException;
 import com.camel.clinic.entity.Specialty;
 import com.camel.clinic.entity.User;
+import com.camel.clinic.repository.DoctorProfileRepository;
+import com.camel.clinic.repository.DoctorScheduleExceptionRepository;
 import com.camel.clinic.service.CommonService;
+import com.camel.clinic.service.doctorScheduleException.DoctorScheduleExceptionServiceInv;
 import com.camel.clinic.service.specialty.SpecialtyServiceInv;
 import com.camel.clinic.service.user.UserServiceInv;
 import com.camel.clinic.util.SecuritiesUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
 @AllArgsConstructor
 public class DoctorProfileServiceImp implements DoctorProfileService {
     private final DoctorProfileServiceInv serviceInv;
+    private final DoctorScheduleExceptionServiceInv doctorScheduleExceptionServiceInv;
     private final UserServiceInv userServiceInv;
     private final SpecialtyServiceInv specialtyServiceInv;
+    private final DoctorProfileRepository doctorProfileRepository;
+    private final DoctorScheduleExceptionRepository doctorScheduleExceptionRepository;
 
     @Override
     public ResponseEntity<?> count() {
@@ -32,7 +42,17 @@ public class DoctorProfileServiceImp implements DoctorProfileService {
 
     @Override
     public ResponseEntity<?> retrieve(String id) {
-        return serviceInv.retrieve(id, null);
+        UUID uuid = CommonService.parseToUuid(id);
+        DoctorProfile record = doctorProfileRepository.findById(uuid)
+            .orElseThrow(() -> new IllegalArgumentException("DoctorProfile with ID " + id + " not found"));
+        Specification<DoctorScheduleException> spec = Specification.<DoctorScheduleException>unrestricted()
+            .and(doctorScheduleExceptionServiceInv.multiFieldEquals(record.getId(), new String[]{"doctorProfile", "id"}))
+            .and(doctorScheduleExceptionServiceInv.multiFieldOnDate(CommonService.getCurrentDate(), new String[]{"exceptionDate"}));
+
+        boolean availableToday = doctorScheduleExceptionRepository.findOne(spec).isEmpty();
+        ResponseDoctorProfileDetailDto dto = new ResponseDoctorProfileDetailDto(record, availableToday);
+
+        return ResponseEntity.ok(dto);
     }
 
     @Override

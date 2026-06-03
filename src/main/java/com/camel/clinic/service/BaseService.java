@@ -37,9 +37,23 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         this.entityFactory = entityFactory;
         this.repository = repository;
         this.objectMapper = new ObjectMapper()
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
+    public Specification<T> multiFieldEquals(Object value, String[]... fields) {
+        if (value == null) return Specification.unrestricted();
+        return (root, query, cb) -> {
+            Predicate[] predicates = Arrays.stream(fields)
+                .map(f -> switch (f.length) {
+                    case 1 -> cb.equal(root.get(f[0]), value);
+                    case 2 -> cb.equal(root.join(f[0], JoinType.LEFT).get(f[1]), value);
+                    case 3 -> cb.equal(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]), value);
+                    default -> cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
+            return cb.or(predicates);
+        };
+    }
 
     /**
      * Tạo mới một bản ghi
@@ -54,13 +68,13 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             log.info("Created entity: {}", saved);
 
             URI location = ServletUriComponentsBuilder
-                    .fromCurrentRequest()
-                    .path("/{id}")
-                    .buildAndExpand(saved.getId())
-                    .toUri();
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(saved.getId())
+                .toUri();
 
             return ResponseEntity.created(location)
-                    .body(saved);
+                .body(saved);
         } catch (Exception e) {
             log.error("Error creating entity: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create entity: " + e.getMessage(), e);
@@ -78,12 +92,12 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             }
 
             List<T> toSave = dataList.stream()
-                    .map(data -> {
-                        T initObject = entityFactory.get();
-                        MapperUtils.convertModelToEntity(data, initObject);
-                        return initObject;
-                    })
-                    .toList();
+                .map(data -> {
+                    T initObject = entityFactory.get();
+                    MapperUtils.convertModelToEntity(data, initObject);
+                    return initObject;
+                })
+                .toList();
 
             List<T> saved = repository.saveAll(toSave);
             log.info("Bulk created {} entities", saved.size());
@@ -109,35 +123,35 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
             // 1. Tách các ID có giá trị (dùng SoftDeletableEntity.getId())
             List<UUID> incomingIds = dataList.stream()
-                    .map(SoftDeletableEntity::getId)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList();
+                .map(SoftDeletableEntity::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
 
             // 2. Batch fetch một lần — tránh N+1
             Map<UUID, T> existingMap = repository.findAllById(incomingIds)
-                    .stream()
-                    .collect(Collectors.toMap(SoftDeletableEntity::getId, e -> e));
+                .stream()
+                .collect(Collectors.toMap(SoftDeletableEntity::getId, e -> e));
 
             // 3. Merge từng item
             List<T> toSave = dataList.stream()
-                    .map(data -> {
-                        UUID id = data.getId();
-                        T target = (id != null && existingMap.containsKey(id))
-                                ? existingMap.get(id)   // UPDATE: merge vào entity hiện tại
-                                : entityFactory.get();  // CREATE: tạo instance mới
-                        MapperUtils.mergeDataSourceToTarget(data, target);
-                        return target;
-                    })
-                    .toList();
+                .map(data -> {
+                    UUID id = data.getId();
+                    T target = (id != null && existingMap.containsKey(id))
+                        ? existingMap.get(id)   // UPDATE: merge vào entity hiện tại
+                        : entityFactory.get();  // CREATE: tạo instance mới
+                    MapperUtils.mergeDataSourceToTarget(data, target);
+                    return target;
+                })
+                .toList();
 
             List<T> saved = repository.saveAll(toSave);
 
             long updatedCount = saved.stream()
-                    .filter(e -> existingMap.containsKey(e.getId()))
-                    .count();
+                .filter(e -> existingMap.containsKey(e.getId()))
+                .count();
             log.info("Bulk upsert: {} total ({} updated, {} created)",
-                    saved.size(), updatedCount, saved.size() - updatedCount);
+                saved.size(), updatedCount, saved.size() - updatedCount);
 
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(saved);
 
@@ -165,8 +179,8 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             String sortDir = (String) queryParams.getOrDefault("sortDir", "asc");
 
             Sort sort = sortDir.equalsIgnoreCase("desc")
-                    ? Sort.by(sortBy).descending()
-                    : Sort.by(sortBy).ascending();
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
 
             Pageable pageable = PageRequest.of(page, size, sort);
 
@@ -176,11 +190,11 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             Page<T> resultPage = repository.findAll(spec, pageable);
 
             ApiPaged<T> paged = ApiPaged.of(
-                    resultPage.getContent(),
-                    resultPage.getTotalElements(),
-                    resultPage.getNumber(),
-                    resultPage.getSize(),
-                    resultPage.getTotalPages()
+                resultPage.getContent(),
+                resultPage.getTotalElements(),
+                resultPage.getNumber(),
+                resultPage.getSize(),
+                resultPage.getTotalPages()
             );
 
             log.info("Listed {} entities (page={}, size={})", resultPage.getNumberOfElements(), page, size);
@@ -198,7 +212,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     public ResponseEntity<?> count() {
         try {
             Specification<T> notDeleted = (root, query, cb) ->
-                    cb.isNull(root.get("deletedAt"));
+                cb.isNull(root.get("deletedAt"));
 
             long total = repository.count(notDeleted);
             log.info("Counted {} entities", total);
@@ -216,7 +230,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     public ResponseEntity<?> retrieve(String id, String fields) {
         try {
             T entity = repository.findById(UUID.fromString(id))
-                    .orElseThrow(() -> new NotFoundException("Entity not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Entity not found with id: " + id));
 
             Object result = filterFields(entity, fields);
             return ResponseEntity.ok(result);
@@ -236,7 +250,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     public ResponseEntity<?> update(String id, T data, String fields) {
         try {
             T existing = repository.findById(UUID.fromString(id))
-                    .orElseThrow(() -> new NotFoundException("Entity not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Entity not found with id: " + id));
 
             // convertModelToEntity  → reset rồi copy  → KHÔNG dùng cho partial update
             // mergeDataSourceToTarget → chỉ copy non-null → ĐÚNG cho partial update
@@ -285,12 +299,12 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     public ResponseEntity<?> restore(String id) {
         try {
             Specification<T> spec = (root, query, cb) -> cb.and(
-                    cb.equal(root.get("id"), UUID.fromString(id)),
-                    cb.isNotNull(root.get("deletedAt"))
+                cb.equal(root.get("id"), UUID.fromString(id)),
+                cb.isNotNull(root.get("deletedAt"))
             );
 
             T entity = repository.findOne(spec)
-                    .orElseThrow(() -> new NotFoundException("Deleted entity not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Deleted entity not found with id: " + id));
 
             entity.setDeletedAt(null);
             T saved = repository.save(entity);
@@ -312,8 +326,8 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     public ResponseEntity<?> getByIds(List<UUID> ids, String fields) {
         try {
             Specification<T> spec = (root, query, cb) -> cb.and(
-                    root.get("id").in(ids),
-                    cb.isNull(root.get("deletedAt"))
+                root.get("id").in(ids),
+                cb.isNull(root.get("deletedAt"))
             );
 
             List<T> entities = repository.findAll(spec);
@@ -340,7 +354,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     protected Specification<T> fieldLike(String fieldName, String keyword) {
         if (keyword == null || keyword.isBlank()) return null;
         return (root, query, cb) ->
-                cb.like(cb.lower(root.get(fieldName)), "%" + keyword.toLowerCase() + "%");
+            cb.like(cb.lower(root.get(fieldName)), "%" + keyword.toLowerCase() + "%");
     }
 
     /**
@@ -354,8 +368,8 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         }
 
         Set<String> allowedFields = Arrays.stream(fields.split(","))
-                .map(String::trim)
-                .collect(Collectors.toSet());
+            .map(String::trim)
+            .collect(Collectors.toSet());
 
         // Convert entity → Map rồi chỉ giữ lại các key được yêu cầu
         Map<String, Object> fullMap = objectMapper.convertValue(entity, Map.class);
@@ -374,7 +388,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
     protected Specification<T> buildBaseSpec(Map<String, Object> queryParams) {
         return Specification.<T>unrestricted()
-                .and(notDeleted());
+            .and(notDeleted());
     }
 
     protected Specification<T> nestedFieldEqual(String join, String fieldName, Object value) {
@@ -386,7 +400,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
     protected Specification<T> nestedFieldLike(String join, String fieldName, String keyword) {
         if (keyword == null || keyword.isBlank()) return null;
         return (root, query, cb) ->
-                cb.like(cb.lower(root.join(join, JoinType.LEFT).get(fieldName)), "%" + keyword.toLowerCase() + "%");
+            cb.like(cb.lower(root.join(join, JoinType.LEFT).get(fieldName)), "%" + keyword.toLowerCase() + "%");
     }
 
     protected Specification<T> notDeleted() {
@@ -415,9 +429,9 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         // List value
         if (raw instanceof List<?> list && !list.isEmpty()) {
             List<V> values = list.stream()
-                    .filter(type::isInstance)
-                    .map(type::cast)
-                    .toList();
+                .filter(type::isInstance)
+                .map(type::cast)
+                .toList();
             if (values.isEmpty()) return Specification.unrestricted();
             return (root, query, cb) -> root.get(fieldName).in(values);
         }
@@ -458,68 +472,53 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> switch (f.length) {
-                        case 1 -> // direct: {"fullName"}
-                                cb.like(cb.lower(root.get(f[0])), pattern);
-                        case 2 -> // nested 1 level: {"specialty", "name"}
-                                cb.like(cb.lower(root.join(f[0], JoinType.LEFT).get(f[1])), pattern);
-                        case 3 -> // nested 2 level: {"doctorProfile", "user", "fullName"}
-                                cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
-                        default -> cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> switch (f.length) {
+                    case 1 -> // direct: {"fullName"}
+                        cb.like(cb.lower(root.get(f[0])), pattern);
+                    case 2 -> // nested 1 level: {"specialty", "name"}
+                        cb.like(cb.lower(root.join(f[0], JoinType.LEFT).get(f[1])), pattern);
+                    case 3 -> // nested 2 level: {"doctorProfile", "user", "fullName"}
+                        cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
+                    default -> cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected Specification<T> multiFieldEquals(Object value, String[]... fields) {
-        if (value == null) return Specification.unrestricted();
-        return (root, query, cb) -> {
-            Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> switch (f.length) {
-                        case 1 -> cb.equal(root.get(f[0]), value);
-                        case 2 -> cb.equal(root.join(f[0], JoinType.LEFT).get(f[1]), value);
-                        case 3 -> cb.equal(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]), value);
-                        default -> cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
-            return cb.or(predicates);
-        };
-    }
-
-    protected Specification<T> multiFieldLike(String keyword, String[]... fields) {
+    public Specification<T> multiFieldLike(String keyword, String[]... fields) {
         if (keyword == null || keyword.isBlank()) return Specification.unrestricted();
         String pattern = "%" + keyword.toLowerCase().trim() + "%";
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> switch (f.length) {
-                        case 1 -> cb.like(cb.lower(root.get(f[0])), pattern);
-                        case 2 -> cb.like(cb.lower(root.join(f[0], JoinType.LEFT).get(f[1])), pattern);
-                        case 3 ->
-                                cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
-                        default -> cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> switch (f.length) {
+                    case 1 -> cb.like(cb.lower(root.get(f[0])), pattern);
+                    case 2 -> cb.like(cb.lower(root.join(f[0], JoinType.LEFT).get(f[1])), pattern);
+                    case 3 ->
+                        cb.like(cb.lower(root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2])), pattern);
+                    default -> cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected <V> Specification<T> multiFieldIn(List<V> values, String[]... fields) {
+    public <V> Specification<T> multiFieldIn(List<V> values, String[]... fields) {
         if (values == null || values.isEmpty()) return Specification.unrestricted();
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> switch (f.length) {
-                        case 1 -> root.get(f[0]).in(values);
-                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values);
-                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values);
-                        default -> cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> switch (f.length) {
+                    case 1 -> root.get(f[0]).in(values);
+                    case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values);
+                    case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values);
+                    default -> cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected Specification<T> multiFieldOnDate(Date date, String[]... fields) {
+    public Specification<T> multiFieldOnDate(Date date, String[]... fields) {
         if (date == null) return Specification.unrestricted();
 
         Date startOfDay = atStartOfDay(date);
@@ -527,21 +526,21 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> {
-                        jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
-                            case 1 -> root.get(f[0]);
-                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
-                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
-                            default -> null;
-                        };
-                        return path != null ? cb.between(path, startOfDay, endOfDay) : cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> {
+                    jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
+                        case 1 -> root.get(f[0]);
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                        default -> null;
+                    };
+                    return path != null ? cb.between(path, startOfDay, endOfDay) : cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected Specification<T> multiFieldBetweenDates(Date from, Date to, String[]... fields) {
+    public Specification<T> multiFieldBetweenDates(Date from, Date to, String[]... fields) {
         if (from == null && to == null) return Specification.unrestricted();
 
         Date normalizedFrom = from != null ? atStartOfDay(from) : null;
@@ -549,76 +548,76 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
 
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> {
-                        jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
-                            case 1 -> root.get(f[0]);
-                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
-                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
-                            default -> null;
-                        };
-                        if (path == null) return cb.conjunction();
-                        if (normalizedFrom == null) return cb.lessThanOrEqualTo(path, normalizedTo);
-                        if (normalizedTo == null) return cb.greaterThanOrEqualTo(path, normalizedFrom);
-                        return cb.between(path, normalizedFrom, normalizedTo);
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> {
+                    jakarta.persistence.criteria.Path<Date> path = switch (f.length) {
+                        case 1 -> root.get(f[0]);
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                        default -> null;
+                    };
+                    if (path == null) return cb.conjunction();
+                    if (normalizedFrom == null) return cb.lessThanOrEqualTo(path, normalizedTo);
+                    if (normalizedTo == null) return cb.greaterThanOrEqualTo(path, normalizedFrom);
+                    return cb.between(path, normalizedFrom, normalizedTo);
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected <V> Specification<T> multiFieldNotIn(List<V> values, String[]... fields) {
+    public <V> Specification<T> multiFieldNotIn(List<V> values, String[]... fields) {
         if (values == null || values.isEmpty()) return Specification.unrestricted();
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> switch (f.length) {
-                        case 1 -> root.get(f[0]).in(values).not();
-                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values).not();
-                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values).not();
-                        default -> cb.conjunction();
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> switch (f.length) {
+                    case 1 -> root.get(f[0]).in(values).not();
+                    case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]).in(values).not();
+                    case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]).in(values).not();
+                    default -> cb.conjunction();
+                })
+                .toArray(Predicate[]::new);
             return cb.and(predicates);
         };
     }
 
-    protected <V extends Comparable<? super V>> Specification<T> multiFieldGreaterThan(V value, boolean orEqual, String[]... fields) {
+    public <V extends Comparable<? super V>> Specification<T> multiFieldGreaterThan(V value, boolean orEqual, String[]... fields) {
         if (value == null) return Specification.unrestricted();
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> {
-                        jakarta.persistence.criteria.Path<V> path = switch (f.length) {
-                            case 1 -> root.get(f[0]);
-                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
-                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
-                            default -> null;
-                        };
-                        if (path == null) return cb.conjunction();
-                        return orEqual
-                                ? cb.greaterThanOrEqualTo(path, value)
-                                : cb.greaterThan(path, value);
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> {
+                    jakarta.persistence.criteria.Path<V> path = switch (f.length) {
+                        case 1 -> root.get(f[0]);
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                        default -> null;
+                    };
+                    if (path == null) return cb.conjunction();
+                    return orEqual
+                        ? cb.greaterThanOrEqualTo(path, value)
+                        : cb.greaterThan(path, value);
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
 
-    protected <V extends Comparable<? super V>> Specification<T> multiFieldLessThan(V value, boolean orEqual, String[]... fields) {
+    public <V extends Comparable<? super V>> Specification<T> multiFieldLessThan(V value, boolean orEqual, String[]... fields) {
         if (value == null) return Specification.unrestricted();
         return (root, query, cb) -> {
             Predicate[] predicates = Arrays.stream(fields)
-                    .map(f -> {
-                        jakarta.persistence.criteria.Path<V> path = switch (f.length) {
-                            case 1 -> root.get(f[0]);
-                            case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
-                            case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
-                            default -> null;
-                        };
-                        if (path == null) return cb.conjunction();
-                        return orEqual
-                                ? cb.lessThanOrEqualTo(path, value)
-                                : cb.lessThan(path, value);
-                    })
-                    .toArray(Predicate[]::new);
+                .map(f -> {
+                    jakarta.persistence.criteria.Path<V> path = switch (f.length) {
+                        case 1 -> root.get(f[0]);
+                        case 2 -> root.join(f[0], JoinType.LEFT).get(f[1]);
+                        case 3 -> root.join(f[0], JoinType.LEFT).join(f[1], JoinType.LEFT).get(f[2]);
+                        default -> null;
+                    };
+                    if (path == null) return cb.conjunction();
+                    return orEqual
+                        ? cb.lessThanOrEqualTo(path, value)
+                        : cb.lessThan(path, value);
+                })
+                .toArray(Predicate[]::new);
             return cb.or(predicates);
         };
     }
@@ -639,16 +638,16 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         // List: ["EARN", "REDEEM"]
         if (raw instanceof List<?> list) {
             return list.stream()
-                    .filter(String.class::isInstance)
-                    .map(v -> {
-                        try {
-                            return Enum.valueOf(enumClass, ((String) v).toUpperCase().trim());
-                        } catch (IllegalArgumentException e) {
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .toList();
+                .filter(String.class::isInstance)
+                .map(v -> {
+                    try {
+                        return Enum.valueOf(enumClass, ((String) v).toUpperCase().trim());
+                    } catch (IllegalArgumentException e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
         }
 
         return List.of();

@@ -85,9 +85,9 @@ public class CommonService {
         }
 
         List<DateTimeFormatter> formatters = List.of(
-                DateTimeFormatter.ISO_LOCAL_DATE,
-                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-                DateTimeFormatter.ofPattern("d-M-yyyy")
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("d-M-yyyy")
         );
 
         for (DateTimeFormatter formatter : formatters) {
@@ -232,18 +232,18 @@ public class CommonService {
         if (s.isBlank()) return Collections.emptyList();
 
         return Arrays.stream(s.split(","))
-                .map(String::trim)
-                .filter(part -> !part.isBlank())
-                .map(part -> {
-                    try {
-                        return parser.apply(part);
-                    } catch (Exception e) {
-                        log.warn("Failed to parse value '{}'", part);
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+            .map(String::trim)
+            .filter(part -> !part.isBlank())
+            .map(part -> {
+                try {
+                    return parser.apply(part);
+                } catch (Exception e) {
+                    log.warn("Failed to parse value '{}'", part);
+                    return null;
+                }
+            })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
     }
 
     public static UUID safeParseUuid(String value) {
@@ -252,5 +252,19 @@ public class CommonService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public static <T> List<T> safeGetList(Map<String, Object> params, String key, Class<T> type) {
+        Object value = params.get(key);
+        if (value instanceof List<?> list) {
+            return list.stream()
+                .filter(type::isInstance)
+                .map(type::cast)
+                .toList();
+        }
+        if (type.isInstance(value)) {
+            return List.of(type.cast(value));
+        }
+        return Collections.emptyList();
     }
 }

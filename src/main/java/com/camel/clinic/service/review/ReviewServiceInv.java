@@ -31,11 +31,11 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
         List<ReviewDto> reviewDtos = resultPage.getData().stream().map(ReviewDto::from).toList();
 
         ApiPaged<ReviewDto> paged = new ApiPaged<>(
-                reviewDtos,
-                resultPage.getTotal(),
-                resultPage.getTotalPages(),
-                resultPage.getPage(),
-                resultPage.getSize()
+            reviewDtos,
+            resultPage.getTotal(),
+            resultPage.getTotalPages(),
+            resultPage.getPage(),
+            resultPage.getSize()
         );
 
         return ResponseEntity.ok(paged);
@@ -43,23 +43,30 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
 
     @Override
     protected Specification<Review> buildSpec(Map<String, Object> queryParams) {
+        String doctorProfileId = (String) queryParams.get("doctorProfileId");
+        String reviewId = (String) queryParams.get("reviewId");
+        String appointmentId = (String) queryParams.get("appointmentId");
+
         return Specification.<Review>unrestricted()
-                .and(notDeleted())
-                .and((root, query, cb) -> {
-                    assert query != null;
-                    if (!query.getResultType().equals(Long.class)) {
-                        root.fetch("patientProfile", JoinType.LEFT);
-                        root.fetch("doctorProfile", JoinType.LEFT);
-                        query.distinct(true);
-                    }
-                    return cb.conjunction();
-                })
-                .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("reviewId")),
-                        new String[]{"id"}
-                ))
-                .and(multiFieldEquals(CommonService.parseToUuid(queryParams.get("appointmentId")),
-                        new String[]{"appointment", "id"}
-                ));
+            .and(notDeleted())
+            .and((root, query, cb) -> {
+                assert query != null;
+                if (!query.getResultType().equals(Long.class)) {
+                    root.fetch("patientProfile", JoinType.LEFT);
+                    root.fetch("doctorProfile", JoinType.LEFT);
+                    query.distinct(true);
+                }
+                return cb.conjunction();
+            })
+            .and(multiFieldEquals(CommonService.parseToUuid(reviewId),
+                new String[]{"id"}
+            ))
+            .and(multiFieldEquals(CommonService.parseToUuid(doctorProfileId),
+                new String[]{"doctorProfile", "id"}
+            ))
+            .and(multiFieldEquals(CommonService.parseToUuid(appointmentId),
+                new String[]{"appointment", "id"}
+            ));
     }
 
     public ResponseEntity<?> retrieveByAppointmentId(String appointmentId) {
@@ -67,7 +74,7 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
         params.put("appointmentId", appointmentId);
 
         Review review = repository.findOne(buildSpec(params))
-                .orElseThrow(() -> new RuntimeException("Review not found with appointmentId: " + appointmentId));
+            .orElseThrow(() -> new RuntimeException("Review not found with appointmentId: " + appointmentId));
 
         return ResponseEntity.ok(ReviewDto.from(review));
     }
@@ -78,7 +85,7 @@ public class ReviewServiceInv extends BaseService<Review, ReviewRepository> {
         params.put("reviewId", id);
 
         Review review = repository.findOne(buildSpec(params))
-                .orElseThrow(() -> new RuntimeException("Review not found with ID: " + id));
+            .orElseThrow(() -> new RuntimeException("Review not found with ID: " + id));
 
         return ResponseEntity.ok(ReviewDto.from(review));
     }

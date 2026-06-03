@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.camel.clinic.service.CommonService.safeGetList;
+
 @Slf4j
 @Service
 public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorProfileRepository> {
@@ -36,12 +38,15 @@ public class DoctorProfileServiceInv extends BaseService<DoctorProfile, DoctorPr
 
     @Override
     protected Specification<DoctorProfile> buildSpec(Map<String, Object> queryParams) {
-        List<String> ids = (List<String>) queryParams.get("ids");
+        List<String> ids = safeGetList(queryParams, "ids", String.class);
         List<UUID> uuids = CommonService.parseToList(ids, UUID::fromString);
+        List<String> excludeIds = safeGetList(queryParams, "excludeIds", String.class);
+        List<UUID> excludeUuids = CommonService.parseToList(excludeIds, UUID::fromString);
 
         return Specification.<DoctorProfile>unrestricted()
             .and(notDeleted())
             .and(multiFieldIn(uuids, new String[]{"id"}))
+            .and(multiFieldNotIn(excludeUuids, new String[]{"id"}))
             .and(multiFieldGreaterThan(CommonService.parseToLong(queryParams.get("minFee")), true,
                 new String[]{"consultationFee"}))
             .and(multiFieldLessThan(CommonService.parseToLong(queryParams.get("maxFee")), true,

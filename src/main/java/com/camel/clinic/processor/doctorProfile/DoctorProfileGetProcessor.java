@@ -18,6 +18,6 @@ public class DoctorProfileGetProcessor implements Processor {
     public void process(Exchange exchange) {
         String id = exchange.getIn().getHeader("id", String.class);
         ResponseEntity<?> response = serviceImp.retrieve(id);
-        exchange.getIn().setBody(response);
+        exchange.getIn().setBody(response.getBody());
     }
 }

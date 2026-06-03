@@ -20,6 +20,16 @@
             json: { }
 
 - route:
+    id: doctor-review-list-route
+    from:
+      uri: direct:doctor-review-list
+      steps:
+        - process:
+            ref: reviewListProcessor
+        - marshal:
+            json: { }
+
+- route:
     id: admin-review-count-route
     from:
       uri: direct:admin-review-count
