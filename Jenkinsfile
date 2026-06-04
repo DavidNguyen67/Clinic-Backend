@@ -2,24 +2,23 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_REPO        = 'davidnguyendev/be-clinic'
-        APP_CONTAINER_NAME    = 'be-clinic'
+        DOCKERHUB_REPO        = 'davidnguyendev/backend'
+        APP_CONTAINER_NAME    = 'backend'
         APP_PORT              = '8080'
         KEEP_IMAGES           = '3'
 
         // Credential IDs in Jenkins
         DOCKERHUB_CREDS       = 'dockerhub-credentials'
-        SSH_CREDS             = 'vps-ssh-credentials'
+        SSH_CREDS             = 'deploy-backend-ssh'
         TELEGRAM_BOT_TOKEN    = 'telegram-bot-token'
         TELEGRAM_CHAT_ID      = 'telegram-chat-id'
         JENKINS_API_CREDS     = 'jenkins-api-credentials'
-        ENV_FILE              = 'be-clinic-env'
+        ENV_FILE              = 'backend-env'
 
         // VPS connection details
-        VPS_HOST              = '168.144.141.68'
-        VPS_USER              = 'root'
+        VPS_HOST              = '178.128.118.157'
 
-        APP_DIR               = '/opt/be-clinic'
+        APP_DIR               = '/opt/app/backend'
         LOCAL_DEPLOY_SCRIPT   = "/tmp/deploy_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
         LOCAL_HEALTH_SCRIPT   = "/tmp/healthcheck_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
         VPS_DEPLOY_SCRIPT     = "/tmp/deploy_${APP_CONTAINER_NAME}_${BUILD_TAG}.sh"
@@ -86,16 +85,20 @@ pipeline {
                 stage('🌐 Deploy to VPS') {
                     steps {
                         withCredentials([
-                            sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY'),
+                            sshUserPrivateKey(
+                                credentialsId: "${SSH_CREDS}",
+                                keyFileVariable: 'SSH_KEY',
+                                usernameVariable: 'SSH_USER'
+                            ),
                             file(credentialsId: "${ENV_FILE}", variable: 'DOTENV_FILE'),
                             usernamePassword(credentialsId: "${DOCKERHUB_CREDS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                         ]) {
                             script {
                                 def sshOpts = "-i \$SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
-                                def target  = "${VPS_USER}@${VPS_HOST}"
+                                def target  = "\$SSH_USER@${VPS_HOST}"
 
                                 sh """
-                                    ssh ${sshOpts} ${target} "mkdir -p ${APP_DIR}"
+                                    ssh ${sshOpts} ${target} "mkdir -p ${APP_DIR} && chmod 644 ${APP_DIR}/.env 2>/dev/null || true"
                                     scp ${sshOpts} "\$DOTENV_FILE" ${target}:${APP_DIR}/.env
                                 """
 
@@ -138,11 +141,15 @@ pipeline {
                 stage('🩺 Health Check') {
                     steps {
                         withCredentials([
-                            sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY')
+                            sshUserPrivateKey(
+                                credentialsId: "${SSH_CREDS}",
+                                keyFileVariable: 'SSH_KEY',
+                                usernameVariable: 'SSH_USER'
+                            )
                         ]) {
                             script {
                                 def sshOpts = "-i \$SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
-                                def target  = "${VPS_USER}@${VPS_HOST}"
+                                def target  = "\$SSH_USER@${VPS_HOST}"
 
                                 sh "ssh ${sshOpts} ${target} \"bash ${VPS_HEALTH_SCRIPT}\""
                             }
@@ -203,7 +210,11 @@ pipeline {
                 sh "rm -f ${LOCAL_DEPLOY_SCRIPT} ${LOCAL_HEALTH_SCRIPT} 2>/dev/null || true"
 
                 withCredentials([
-                    sshUserPrivateKey(credentialsId: "${SSH_CREDS}", keyFileVariable: 'SSH_KEY')
+                    sshUserPrivateKey(
+                        credentialsId: "${SSH_CREDS}",
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
+                    )
                 ]) {
                     sh """
                         ssh -i \$SSH_KEY \\
@@ -211,7 +222,7 @@ pipeline {
                             -o ConnectTimeout=5 \\
                             -o ServerAliveInterval=3 \\
                             -o ServerAliveCountMax=2 \\
-                            ${VPS_USER}@${VPS_HOST} \\
+                            \$SSH_USER@${VPS_HOST} \\
                             "rm -f ${VPS_DEPLOY_SCRIPT} ${VPS_HEALTH_SCRIPT}" 2>/dev/null || true
                     """
                 }
