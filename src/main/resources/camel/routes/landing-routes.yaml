@@ -1,0 +1,20 @@
+- onException:
+    exception:
+      - java.lang.Exception
+    handled:
+      constant: true
+    steps:
+      - process:
+          ref: exceptionProcessor
+      - marshal:
+          json: { }
+
+- route:
+    id: public-landing-route
+    from:
+      uri: direct:public-landing
+      steps:
+        - process:
+            ref: landingPageProcessor
+        - marshal:
+            json: { }

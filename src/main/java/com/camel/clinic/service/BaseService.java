@@ -403,7 +403,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
             cb.like(cb.lower(root.join(join, JoinType.LEFT).get(fieldName)), "%" + keyword.toLowerCase() + "%");
     }
 
-    protected Specification<T> notDeleted() {
+    public Specification<T> notDeleted() {
         return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
     }
 
@@ -622,7 +622,7 @@ public abstract class BaseService<T extends SoftDeletableEntity, R extends JpaRe
         };
     }
 
-    protected <E extends Enum<E>> List<E> parseEnumList(Object raw, Class<E> enumClass) {
+    public <E extends Enum<E>> List<E> parseEnumList(Object raw, Class<E> enumClass) {
         if (raw == null) return List.of();
 
         // Single string: "EARN"
