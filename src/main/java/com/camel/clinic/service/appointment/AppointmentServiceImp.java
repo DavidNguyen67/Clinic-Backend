@@ -3,12 +3,12 @@ package com.camel.clinic.service.appointment;
 import com.camel.clinic.dto.appointment.CreateAppointmentDto;
 import com.camel.clinic.dto.appointment.ResponseAppointmentDto;
 import com.camel.clinic.dto.appointment.UpdateAppointmentDto;
-import com.camel.clinic.dto.doctorProfile.UpdateDoctorProfileDto;
 import com.camel.clinic.dto.invoice.UpdateInvoiceDto;
 import com.camel.clinic.dto.invoiceItem.UpdateInvoiceItemDto;
 import com.camel.clinic.entity.*;
 import com.camel.clinic.exception.BadRequestException;
 import com.camel.clinic.repository.AppointmentRepository;
+import com.camel.clinic.repository.DoctorProfileRepository;
 import com.camel.clinic.repository.InvoiceRepository;
 import com.camel.clinic.service.CommonService;
 import com.camel.clinic.service.doctorProfile.DoctorProfileServiceInv;
@@ -38,6 +38,7 @@ public class AppointmentServiceImp implements AppointmentService {
     private final InvoiceServiceImp invoiceServiceImp;
     private final AppointmentRepository appointmentRepository;
     private final InvoiceRepository invoiceRepository;
+    private final DoctorProfileRepository doctorProfileRepository;
 
     public ResponseEntity<?> calculatePatientStatistics(Map<String, Object> queryParams) {
         return serviceInv.calculatePatientStatistics(queryParams);
@@ -207,9 +208,11 @@ public class AppointmentServiceImp implements AppointmentService {
         }
 
         if (targetStatus == COMPLETED && appointmentEntity.getStatus() != COMPLETED) {
-            UpdateDoctorProfileDto doctorProfileRequest = new UpdateDoctorProfileDto();
-            doctorProfileRequest.setTotalPatients(appointmentEntity.getDoctorProfile().getTotalPatients() + 1);
-            DoctorProfile doctorProfile = serviceInv.retrieve(id, null).getBody() instanceof DoctorProfile dp ? dp : null;
+            DoctorProfile doctorProfile = doctorProfileRepository.findById(
+                CommonService.parseToUuid(appointment.getDoctorProfileId())).orElseThrow(() -> new BadRequestException(
+                "Doctor profile with ID " + appointment.getDoctorProfileId() + " not found"));
+
+            doctorProfile.setTotalPatients(appointmentEntity.getDoctorProfile().getTotalPatients() + 1);
             String doctorProfileId = doctorProfile.getId().toString();
 
             return doctorProfileServiceInv.update(doctorProfileId, doctorProfile, null);
