@@ -215,7 +215,7 @@ public class AppointmentServiceImp implements AppointmentService {
             doctorProfile.setTotalPatients(appointmentEntity.getDoctorProfile().getTotalPatients() + 1);
             String doctorProfileId = doctorProfile.getId().toString();
 
-            return doctorProfileServiceInv.update(doctorProfileId, doctorProfile, null);
+            doctorProfileServiceInv.update(doctorProfileId, doctorProfile, null);
         }
 
         if (doctorChanged) {
