@@ -2,6 +2,7 @@ package com.camel.clinic.filter;
 
 import com.camel.clinic.service.CustomUserDetailsService;
 import com.camel.clinic.util.JwtUtil; // class JWT hiện tại của bạn
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -12,6 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
@@ -31,16 +33,25 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
             String token = accessor.getFirstNativeHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
-                String jwt = token.substring(7);
-                String userId = jwtUtil.getUserIdFromToken(jwt);
-                if (userId != null) {
-                    String email = jwtUtil.getEmailFromToken(jwt);
+                try {
+                    String jwt = token.substring(7);
+                    String userId = jwtUtil.getUserIdFromToken(jwt);
+                    if (userId != null) {
+                        String email = jwtUtil.getEmailFromToken(jwt);
 
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    accessor.setUser(authentication);
+                        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                        accessor.setUser(authentication);
+                        log.info("WebSocket authenticated userId={} email={}", userId, email);
+                    } else {
+                        log.warn("WebSocket CONNECT rejected because token has no userId");
+                    }
+                } catch (Exception ex) {
+                    log.warn("WebSocket CONNECT authentication failed: {}", ex.getMessage());
                 }
+            } else {
+                log.warn("WebSocket CONNECT without Bearer token");
             }
         }
         return message;

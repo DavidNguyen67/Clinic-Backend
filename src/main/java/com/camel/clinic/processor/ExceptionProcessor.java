@@ -55,6 +55,7 @@ public class ExceptionProcessor implements Processor {
         }
 
         message = resolveMessage(cause, status);
+        logException(exchange, cause, status, code, message);
 
         RestErrorDto errorResponse = new RestErrorDto();
         errorResponse.setStatusCode(code);
@@ -70,7 +71,6 @@ public class ExceptionProcessor implements Processor {
         if (ex == null) return "Unknown error";
 
         if (status == 500) {
-            log.error("An unexpected error occurred: ", ex);
             return ex.getMessage() != null
                     ? ex.getMessage()
                     : "An unexpected error occurred";
@@ -79,5 +79,20 @@ public class ExceptionProcessor implements Processor {
         return ex.getMessage() != null
                 ? ex.getMessage()
                 : "Request failed";
+    }
+
+    private void logException(Exchange exchange, Exception cause, int status, String code, String message) {
+        String routeId = exchange.getFromRouteId();
+        String exchangeId = exchange.getExchangeId();
+        String method = exchange.getIn().getHeader(Exchange.HTTP_METHOD, String.class);
+        String path = exchange.getIn().getHeader(Exchange.HTTP_PATH, String.class);
+
+        if (status >= 500) {
+            log.error("Request failed exchangeId={} routeId={} method={} path={} status={} code={} message={}",
+                    exchangeId, routeId, method, path, status, code, message, cause);
+        } else {
+            log.warn("Request rejected exchangeId={} routeId={} method={} path={} status={} code={} message={}",
+                    exchangeId, routeId, method, path, status, code, message);
+        }
     }
 }

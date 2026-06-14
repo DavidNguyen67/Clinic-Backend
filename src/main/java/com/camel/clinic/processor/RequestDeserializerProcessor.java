@@ -1,12 +1,14 @@
 package com.camel.clinic.processor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Slf4j
 @Component("requestDeserializerProcessor")
 public class RequestDeserializerProcessor implements Processor {
     private final ObjectMapper objectMapper;
@@ -22,6 +24,12 @@ public class RequestDeserializerProcessor implements Processor {
         Boolean isList = exchange.getIn().getHeader("X-DTO-List", Boolean.class);
 
         if (targetType != null && body != null) {
+            log.debug("Deserializing request exchangeId={} routeId={} targetType={} isList={} bodyLength={}",
+                    exchange.getExchangeId(),
+                    exchange.getFromRouteId(),
+                    targetType.getName(),
+                    Boolean.TRUE.equals(isList),
+                    body.length());
             if (Boolean.TRUE.equals(isList)) {
                 var listType = objectMapper.getTypeFactory()
                         .constructCollectionType(List.class, targetType);
@@ -29,6 +37,12 @@ public class RequestDeserializerProcessor implements Processor {
             } else {
                 exchange.getIn().setBody(objectMapper.readValue(body, targetType));
             }
+        } else {
+            log.debug("Skipping request deserialization exchangeId={} routeId={} targetTypePresent={} bodyPresent={}",
+                    exchange.getExchangeId(),
+                    exchange.getFromRouteId(),
+                    targetType != null,
+                    body != null);
         }
     }
 }

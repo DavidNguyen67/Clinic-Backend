@@ -35,7 +35,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        boolean publicPath = PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        if (publicPath) {
+            log.debug("Skipping JWT authentication for public path={}", path);
+        }
+        return publicPath;
     }
 
     @Override
@@ -48,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt) && jwtUtil.validateToken(jwt) && jwtUtil.isAccessToken(jwt)) {
                 String jti = jwtUtil.getJtiFromToken(jwt);
                 if (jti != null && tokenStoreService.isBlacklisted(jti)) {
+                    log.warn("Rejected blacklisted JWT jti={} path={}", jti, request.getRequestURI());
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -59,10 +64,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Set authentication for user: {}", email);
+                log.debug("Set authentication for user={} path={}", email, request.getRequestURI());
+            } else if (StringUtils.hasText(jwt)) {
+                log.warn("Rejected invalid JWT path={}", request.getRequestURI());
+            } else {
+                log.debug("No JWT provided path={}", request.getRequestURI());
             }
         } catch (Exception ex) {
-            log.error("Could not set user authentication in security context", ex);
+            log.error("Could not set user authentication in security context path={}", request.getRequestURI(), ex);
         }
 
         filterChain.doFilter(request, response);
