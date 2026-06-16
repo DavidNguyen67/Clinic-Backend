@@ -10,9 +10,9 @@
           json: { }
 
 - route:
-    id: user-list-route
+    id: admin-user-list-route
     from:
-      uri: direct:user-list
+      uri: direct:admin-user-list
       steps:
         - process:
             ref: userListProcessor
@@ -30,9 +30,9 @@
             json: { }
 
 - route:
-    id: user-statistics-route
+    id: admin-user-statistics-route
     from:
-      uri: direct:user-statistics
+      uri: direct:admin-user-statistics
       steps:
         - process:
             ref: userStatisticsProcessor
@@ -40,19 +40,9 @@
             json: { }
 
 - route:
-    id: user-seed-route
+    id: admin-user-count-route
     from:
-      uri: direct:user-seed
-      steps:
-        - process:
-            ref: userSeedProcessor
-        - marshal:
-            json: { }
-
-- route:
-    id: user-count-route
-    from:
-      uri: direct:user-count
+      uri: direct:admin-user-count
       steps:
         - process:
             ref: userCountProcessor
@@ -60,9 +50,9 @@
             json: { }
 
 - route:
-    id: user-get-route
+    id: admin-user-get-route
     from:
-      uri: direct:user-get
+      uri: direct:admin-user-get
       steps:
         - process:
             ref: userGetProcessor
@@ -76,5 +66,39 @@
       steps:
         - process:
             ref: userStatisticsProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-user-create-route
+    from:
+      uri: direct:admin-user-create
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.user.CreateUserDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: userCreateProcessor
+        - marshal:
+            json: { }
+
+- route:
+    id: admin-user-update-route
+    from:
+      uri: direct:admin-user-update
+      steps:
+        - setHeader:
+            name: X-DTO-Class
+            constant: com.camel.clinic.dto.user.UpdateUserDto
+        - process:
+            ref: requestDeserializerProcessor
+        - process:
+            ref: validationProcessor
+        - process:
+            ref: userUpdateProcessor
         - marshal:
             json: { }

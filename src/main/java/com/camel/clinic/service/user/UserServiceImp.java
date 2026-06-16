@@ -1,24 +1,36 @@
 package com.camel.clinic.service.user;
 
 import com.camel.clinic.dto.user.CreateUserDto;
+import com.camel.clinic.dto.user.UpdateUserDto;
 import com.camel.clinic.dto.user.UserStatisticsDto;
 import com.camel.clinic.entity.Role;
 import com.camel.clinic.entity.User;
+import com.camel.clinic.exception.BadRequestException;
+import com.camel.clinic.repository.UserRepository;
+import com.camel.clinic.service.CommonService;
+import com.camel.clinic.service.auth.AuthServiceInv;
+import com.camel.clinic.service.redis.EmailUniqueService;
+import jakarta.validation.ConstraintViolationException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionSystemException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Slf4j
 @AllArgsConstructor
 public class UserServiceImp implements UserService {
     private final UserServiceInv serviceInv;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailUniqueService emailUniqueService;
+    private final AuthServiceInv authServiceInv;
 
     @Override
     public ResponseEntity<?> list(Map<String, Object> queryParams) {
@@ -51,17 +63,105 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
+    public ResponseEntity<?> create(CreateUserDto req) {
+        try {
+            String email = req.getEmail().trim().toLowerCase();
+            Role.RoleName role = Optional.ofNullable(req.getRole()).orElse(Role.RoleName.PATIENT);
+
+            if (emailUniqueService.existsInCache(email)) {
+                throw new BadRequestException("Email already exists");
+            }
+
+            if (authServiceInv.findByEmail(email).isPresent()) {
+                emailUniqueService.addToCache(email);
+                throw new BadRequestException("Email already exists");
+            }
+
+
+            if (authServiceInv.findByPhone(req.getPhone()).isPresent()) {
+                throw new BadRequestException("Phone number already exists");
+            }
+
+            User user = new User();
+            user.setEmail(email);
+            user.setFullName(req.getName());
+            user.setPhone(req.getPhone());
+            user.setDateOfBirth(req.getDateOfBirth());
+            user.setRole(role);
+            user.setGender(req.getGender());
+            user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+            user.setPathAvatar(req.getPathAvatar());
+            user.setPhoneVerified(false);
+            user.setEmailVerified(false);
+            ResponseEntity responseEntity = serviceInv.create(user);
+
+            emailUniqueService.addToCache(email);
+
+            return responseEntity;
+        } catch (TransactionSystemException e) {
+            Throwable cause = e.getRootCause();
+            if (cause instanceof ConstraintViolationException cve) {
+                cve.getConstraintViolations().forEach(v ->
+                    log.error("Validation fail: {} = '{}' → {}",
+                        v.getPropertyPath(), v.getInvalidValue(), v.getMessage())
+                );
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public ResponseEntity<?> update(String id, UpdateUserDto req) {
+        try {
+            User user = userRepository.findById(CommonService.parseToUuid(id))
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+            user.setFullName(req.getName());
+            if (authServiceInv.findByPhone(req.getPhone()).isPresent()) {
+                throw new BadRequestException("Phone number already exists");
+            }
+            user.setPhone(req.getPhone());
+
+            if (authServiceInv.findByEmail(req.getPhone()).isPresent()) {
+                throw new BadRequestException("Email already exists");
+            } else {
+                String email = req.getEmail().trim().toLowerCase();
+                if (!email.equals(user.getEmail())) {
+                    emailUniqueService.removeFromCache(user.getEmail());
+                    emailUniqueService.addToCache(email);
+                }
+                user.setEmail(email);
+            }
+            user.setDateOfBirth(req.getDateOfBirth());
+            user.setGender(req.getGender());
+            user.setPathAvatar(req.getPathAvatar());
+            user.setRole(req.getRole());
+
+            return serviceInv.update(id, user, null);
+        } catch (TransactionSystemException e) {
+            Throwable cause = e.getRootCause();
+            if (cause instanceof ConstraintViolationException cve) {
+                cve.getConstraintViolations().forEach(v ->
+                    log.error("Validation fail: {} = '{}' → {}",
+                        v.getPropertyPath(), v.getInvalidValue(), v.getMessage())
+                );
+            }
+            throw e;
+        }
+    }
+
+    @Override
     public ResponseEntity<?> calculateStatistics() {
         long patientsCount = serviceInv.countByRole(Role.RoleName.PATIENT, Map.of());
         long doctorsCount = serviceInv.countByRole(Role.RoleName.DOCTOR, Map.of());
         long adminsCount = serviceInv.countByRole(Role.RoleName.ADMIN, Map.of());
         long staffsCount = serviceInv.countByRole(Role.RoleName.STAFF, Map.of());
         UserStatisticsDto statistics = UserStatisticsDto.builder()
-                .patientsCount(patientsCount)
-                .doctorsCount(doctorsCount)
-                .adminsCount(adminsCount)
-                .staffsCount(staffsCount)
-                .build();
+            .patientsCount(patientsCount)
+            .doctorsCount(doctorsCount)
+            .adminsCount(adminsCount)
+            .staffsCount(staffsCount)
+            .build();
         statistics.calculateTotalCount();
 
         return ResponseEntity.ok(statistics);

@@ -1,6 +1,7 @@
 package com.camel.clinic.service.user;
 
 import com.camel.clinic.dto.user.CreateUserDto;
+import com.camel.clinic.dto.user.UpdateUserDto;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -12,6 +13,10 @@ public interface UserService {
     ResponseEntity<?> bulkCreate(List<CreateUserDto> requestBody);
 
     ResponseEntity<?> count();
+
+    ResponseEntity<?> create(CreateUserDto request);
+
+    ResponseEntity<?> update(String id, UpdateUserDto request);
 
     ResponseEntity<?> calculateStatistics();
 

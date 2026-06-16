@@ -1,17 +1,26 @@
 - rest:
     path: /v1/admin/user
     post:
-      - path: /seed
-        to: direct:user-seed
+      - path: /
+        to: direct:admin-user-create
     get:
       - path: /
-        to: direct:user-list
+        to: direct:admin-user-list
       - path: /count
-        to: direct:user-count\
+        to: direct:admin-user-count
       - path: /statistics
-        to: direct:user-statistics
+        to: direct:admin-user-statistics
       - path: /{id}
-        to: direct:user-get
+        to: direct:admin-user-get
+
+    patch:
+      - path: /{id}
+        to: direct:admin-user-update
+      - path: /restore/{id}
+        to: direct:admin-user-restore
+    delete:
+      - path: /{id}
+        to: direct:admin-user-delete
 
 - rest:
     path: /v1/public/user
