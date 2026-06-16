@@ -385,17 +385,18 @@ Tất cả lỗi trả về format chung: `RestErrorDto`
 
 ## User
 
-| Method | Path                         | Mô tả                     | Request DTO              | Response               |
-| ------ | ---------------------------- | ------------------------- | ------------------------ | ---------------------- |
-| POST   | `/v1/admin/user/seed`        | Seed dữ liệu user         | `List<CreateUserDto>`    | —                      |
-| GET    | `/v1/admin/user/`            | Admin lấy danh sách user  | Query lọc/phân trang     | `ApiPaged<User>`       |
-| GET    | `/v1/admin/user/count`       | Admin đếm user            | Query lọc                | `Long`                 |
-| GET    | `/v1/admin/user/statistics`  | Admin lấy thống kê user   | Query thời gian/lọc      | `UserStatisticsDto`    |
-| GET    | `/v1/admin/user/{id}`        | Admin lấy chi tiết user   | `id`                     | `User`                 |
-| GET    | `/v1/public/user/statistics` | Public lấy thống kê user  | Query thời gian/lọc      | `UserStatisticsDto`    |
-| GET    | `/v1/public/user/`           | Public lấy danh sách user | Query lọc/phân trang     | `ApiPaged<User>`       |
-
-> **Lưu ý:** Trong `user-rest.yaml`, route `/v1/admin/user/count` đang khai báo `direct:user-count\` có dấu `\` cuối route id.
+| Method | Path                          | Mô tả                       | Request DTO          | Response             |
+| ------ | ----------------------------- | --------------------------- | -------------------- | -------------------- |
+| POST   | `/v1/admin/user/`             | Admin tạo user              | `CreateUserDto`      | `User`               |
+| GET    | `/v1/admin/user/`             | Admin lấy danh sách user    | Query lọc/phân trang | `ApiPaged<User>`     |
+| GET    | `/v1/admin/user/count`        | Admin đếm user              | Query lọc            | `Long`               |
+| GET    | `/v1/admin/user/statistics`   | Admin lấy thống kê user     | Query thời gian/lọc  | `UserStatisticsDto`  |
+| GET    | `/v1/admin/user/{id}`         | Admin lấy chi tiết user     | `id`                 | `User`               |
+| PATCH  | `/v1/admin/user/{id}`         | Admin cập nhật user         | `UpdateUserDto`      | `User`               |
+| PATCH  | `/v1/admin/user/restore/{id}` | Admin khôi phục user đã xóa | `id`                 | `User`               |
+| DELETE | `/v1/admin/user/{id}`         | Admin xóa user              | `id`                 | `204 No Content`     |
+| GET    | `/v1/public/user/statistics`  | Public lấy thống kê user    | Query thời gian/lọc  | `UserStatisticsDto`  |
+| GET    | `/v1/public/user/`            | Public lấy danh sách user   | Query lọc/phân trang | `ApiPaged<User>`     |
 
 ---
 
