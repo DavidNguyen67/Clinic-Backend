@@ -13,7 +13,7 @@ pipeline {
             K8S_HOST       = '178.128.118.157'
             K8S_NAMESPACE  = 'staging'
             K8S_DEPLOYMENT = 'clinic-backend-deployment'
-            K8S_CONTAINER  = 'backend'
+            K8S_CONTAINER  = 'clinic-backend'
 
             // SSH vào VPS K3s
             SSH_CREDS = 'deploy-backend-ssh'
