@@ -139,7 +139,7 @@ pipeline {
                     "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
                     "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                     "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Thời gian:* ${currentBuild.durationString}"
+                    "⏱️ *Time:* ${currentBuild.durationString}"
                 )
             }
         }
@@ -155,7 +155,7 @@ pipeline {
                     "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
                     "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                     "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Thời gian:* ${currentBuild.durationString}"
+                    "⏱️ *Time:* ${currentBuild.durationString}"
                 )
             }
         }
@@ -168,7 +168,7 @@ pipeline {
                     "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
                     "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
                     "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Thời gian:* ${currentBuild.durationString}"
+                    "⏱️ *Time:* ${currentBuild.durationString}"
                 )
             }
         }
