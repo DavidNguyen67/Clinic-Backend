@@ -119,7 +119,7 @@ pipeline {
                                 sudo k3s kubectl rollout status \
                                     deployment/$K8S_DEPLOYMENT \
                                     -n $K8S_NAMESPACE \
-                                    --timeout=180s
+                                    --timeout=600s
                             "
                     '''
                 }
