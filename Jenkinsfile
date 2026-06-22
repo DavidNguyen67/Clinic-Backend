@@ -6,9 +6,6 @@ pipeline {
             DOCKERHUB_REPO  = 'davidnguyendev/backend'
             DOCKERHUB_CREDS = 'dockerhub-credentials'
 
-            // File .env backend
-            ENV_FILE = 'backend-env'
-
             // Kubernetes
             K8S_HOST       = '178.128.118.157'
             K8S_NAMESPACE  = 'staging'
@@ -55,20 +52,11 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                withCredentials([
-                    file(
-                        credentialsId: "${ENV_FILE}",
-                        variable: 'DOTENV_FILE'
-                    )
-                ]) {
-                    sh '''
-                        cp "$DOTENV_FILE" .env
-
-                        docker build \
-                            -t "$IMAGE_TAG" \
-                            .
-                    '''
-                }
+                sh '''
+                    docker build \
+                        -t "$IMAGE_TAG" \
+                        .
+                '''
             }
         }
 
@@ -175,7 +163,6 @@ pipeline {
 
         always {
             script {
-                sh 'rm -f .env 2>/dev/null || true'
                 sh 'docker logout 2>/dev/null || true'
 
                 if (env.IMAGE_TAG) {
