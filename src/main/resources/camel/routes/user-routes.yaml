@@ -102,3 +102,14 @@
             ref: userUpdateProcessor
         - marshal:
             json: { }
+
+
+- route:
+    id: admin-user-delete-route
+    from:
+      uri: direct:admin-user-delete
+      steps:
+        - process:
+            ref: userDeleteProcessor
+        - marshal:
+            json: { }
