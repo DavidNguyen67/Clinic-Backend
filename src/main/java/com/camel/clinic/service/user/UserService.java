@@ -16,6 +16,8 @@ public interface UserService {
 
     ResponseEntity<?> create(CreateUserDto request);
 
+    ResponseEntity<?> delete(String id);
+
     ResponseEntity<?> update(String id, UpdateUserDto request);
 
     ResponseEntity<?> calculateStatistics();

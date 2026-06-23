@@ -18,9 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionSystemException;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -102,8 +100,8 @@ public class UserServiceImp implements UserService {
             Throwable cause = e.getRootCause();
             if (cause instanceof ConstraintViolationException cve) {
                 cve.getConstraintViolations().forEach(v ->
-                    log.error("Validation fail: {} = '{}' → {}",
-                        v.getPropertyPath(), v.getInvalidValue(), v.getMessage())
+                        log.error("Validation fail: {} = '{}' → {}",
+                                v.getPropertyPath(), v.getInvalidValue(), v.getMessage())
                 );
             }
             throw e;
@@ -111,41 +109,74 @@ public class UserServiceImp implements UserService {
     }
 
     @Override
+    public ResponseEntity<?> delete(String id) {
+        return serviceInv.delete(id);
+    }
+
+    @Override
     public ResponseEntity<?> update(String id, UpdateUserDto req) {
         try {
-            User user = userRepository.findById(CommonService.parseToUuid(id))
-                .orElseThrow(() -> new BadRequestException("User not found"));
+            UUID userId = CommonService.parseToUuid(id);
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BadRequestException("User not found"));
+
+            String newPhone = req.getPhone() != null
+                    ? req.getPhone().trim()
+                    : null;
+
+            String newEmail = req.getEmail() != null
+                    ? req.getEmail().trim().toLowerCase()
+                    : null;
+
+            if (!Objects.equals(newPhone, user.getPhone())) {
+                authServiceInv.findByPhone(newPhone).ifPresent(existingUser -> {
+                    if (!existingUser.getId().equals(userId)) {
+                        throw new BadRequestException("Phone number already exists");
+                    }
+                });
+
+                user.setPhone(newPhone);
+            }
+
+            if (!Objects.equals(newEmail, user.getEmail())) {
+                authServiceInv.findByEmail(newEmail).ifPresent(existingUser -> {
+                    if (!existingUser.getId().equals(userId)) {
+                        throw new BadRequestException("Email already exists");
+                    }
+                });
+
+                // Chỉ cập nhật cache khi email thay đổi
+                if (user.getEmail() != null) {
+                    emailUniqueService.removeFromCache(user.getEmail());
+                }
+
+                emailUniqueService.addToCache(newEmail);
+                user.setEmail(newEmail);
+            }
 
             user.setFullName(req.getName());
-            if (authServiceInv.findByPhone(req.getPhone()).isPresent()) {
-                throw new BadRequestException("Phone number already exists");
-            }
-            user.setPhone(req.getPhone());
-
-            if (authServiceInv.findByEmail(req.getPhone()).isPresent()) {
-                throw new BadRequestException("Email already exists");
-            } else {
-                String email = req.getEmail().trim().toLowerCase();
-                if (!email.equals(user.getEmail())) {
-                    emailUniqueService.removeFromCache(user.getEmail());
-                    emailUniqueService.addToCache(email);
-                }
-                user.setEmail(email);
-            }
             user.setDateOfBirth(req.getDateOfBirth());
             user.setGender(req.getGender());
             user.setPathAvatar(req.getPathAvatar());
             user.setRole(req.getRole());
 
             return serviceInv.update(id, user, null);
+
         } catch (TransactionSystemException e) {
             Throwable cause = e.getRootCause();
+
             if (cause instanceof ConstraintViolationException cve) {
                 cve.getConstraintViolations().forEach(v ->
-                    log.error("Validation fail: {} = '{}' → {}",
-                        v.getPropertyPath(), v.getInvalidValue(), v.getMessage())
+                        log.error(
+                                "Validation fail: {} = '{}' → {}",
+                                v.getPropertyPath(),
+                                v.getInvalidValue(),
+                                v.getMessage()
+                        )
                 );
             }
+
             throw e;
         }
     }
@@ -157,11 +188,11 @@ public class UserServiceImp implements UserService {
         long adminsCount = serviceInv.countByRole(Role.RoleName.ADMIN, Map.of());
         long staffsCount = serviceInv.countByRole(Role.RoleName.STAFF, Map.of());
         UserStatisticsDto statistics = UserStatisticsDto.builder()
-            .patientsCount(patientsCount)
-            .doctorsCount(doctorsCount)
-            .adminsCount(adminsCount)
-            .staffsCount(staffsCount)
-            .build();
+                .patientsCount(patientsCount)
+                .doctorsCount(doctorsCount)
+                .adminsCount(adminsCount)
+                .staffsCount(staffsCount)
+                .build();
         statistics.calculateTotalCount();
 
         return ResponseEntity.ok(statistics);
