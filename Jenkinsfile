@@ -24,9 +24,8 @@ pipeline {
     }
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
+        skipDefaultCheckout(true)
         timeout(time: 30, unit: 'MINUTES')
-        disableConcurrentBuilds()
         timestamps()
     }
 
@@ -37,6 +36,7 @@ pipeline {
             }
 
             steps {
+                deleteDir()
                 checkout scm
 
                 script {
@@ -45,10 +45,28 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    env.IMAGE_TAG = "${env.DOCKERHUB_REPO}:${env.GIT_COMMIT_SHORT}"
+                    env.GIT_BRANCH_NAME =
+                        env.BRANCH_NAME ?:
+                        env.GIT_BRANCH?.replace('origin/', '') ?:
+                        'master'
+
+                    env.IMAGE_TAG =
+                        "${env.DOCKERHUB_REPO}:${env.GIT_COMMIT_SHORT}"
+
+                    env.LATEST_TAG =
+                        "${env.DOCKERHUB_REPO}:latest"
+
                     echo "Branch: ${env.GIT_BRANCH_NAME}"
+                    echo "Commit: ${env.GIT_COMMIT_SHORT}"
                     echo "Image: ${env.IMAGE_TAG}"
+                    echo "Latest image: ${env.LATEST_TAG}"
                 }
+
+                stash(
+                    name: 'backend-source',
+                    includes: '**/*',
+                    useDefaultExcludes: false
+                )
             }
         }
 
@@ -58,12 +76,22 @@ pipeline {
             }
 
             steps {
+                deleteDir()
+                unstash 'backend-source'
+
                 sh '''
-                    set -e
+                    set -eu
+
+                    echo "Building image: $IMAGE_TAG"
+                    echo "Latest tag: $LATEST_TAG"
+
+                    test -n "$IMAGE_TAG"
+                    test -n "$LATEST_TAG"
 
                     docker build \
                         --pull \
-                        -t "$IMAGE_TAG" \
+                        --tag "$IMAGE_TAG" \
+                        --tag "$LATEST_TAG" \
                         .
                 '''
             }
@@ -83,14 +111,21 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        set -e
+                        set -eu
+
+                        test -n "$IMAGE_TAG"
+                        test -n "$LATEST_TAG"
 
                         echo "$DOCKER_PASS" |
                             docker login \
                                 --username "$DOCKER_USER" \
                                 --password-stdin
 
+                        echo "Pushing commit tag: $IMAGE_TAG"
                         docker push "$IMAGE_TAG"
+
+                        echo "Pushing latest tag: $LATEST_TAG"
+                        docker push "$LATEST_TAG"
                     '''
                 }
             }
@@ -119,8 +154,18 @@ pipeline {
 
                         export KUBECONFIG="$KUBECONFIG_FILE"
 
-                        echo "Checking Kubernetes connection..."
-                        kubectl cluster-info
+                        echo "Checking Kubernetes permissions..."
+
+                        kubectl auth can-i get deployments.apps \
+                        --namespace="${K8S_NAMESPACE}" | grep -qx "yes"
+
+                        kubectl auth can-i patch deployments.apps \
+                        --namespace="${K8S_NAMESPACE}" | grep -qx "yes"
+
+                        kubectl get deployment "${K8S_DEPLOYMENT}" \
+                        --namespace="${K8S_NAMESPACE}" >/dev/null
+
+                        echo "Kubernetes connection and permissions are valid."
 
                         echo "Updating deployment image..."
                         kubectl set image \
