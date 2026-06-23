@@ -1,26 +1,23 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
-            // Docker Hub
-            DOCKERHUB_REPO  = 'davidnguyendev/backend'
-            DOCKERHUB_CREDS = 'dockerhub-credentials'
+        // Docker Hub
+        DOCKERHUB_REPO  = 'davidnguyendev/backend'
+        DOCKERHUB_CREDS = 'dockerhub-credentials'
 
-            // Kubernetes
-            K8S_HOST       = '178.128.118.157'
-            K8S_NAMESPACE  = 'staging'
-            K8S_DEPLOYMENT = 'clinic-backend-deployment'
-            K8S_CONTAINER  = 'clinic-backend'
+        // Kubernetes
+        K8S_NAMESPACE  = 'staging'
+        K8S_DEPLOYMENT = 'clinic-backend-deployment'
+        K8S_CONTAINER  = 'clinic-backend'
+        KUBECONFIG_CREDS = 'k3s-staging-kubeconfig'
 
-            // SSH vào VPS K3s
-            SSH_CREDS = 'deploy-backend-ssh'
+        // Telegram
+        TELEGRAM_BOT_TOKEN = 'telegram-bot-token'
+        TELEGRAM_CHAT_ID   = 'telegram-chat-id'
 
-            // Telegram
-            TELEGRAM_BOT_TOKEN = 'telegram-bot-token'
-            TELEGRAM_CHAT_ID   = 'telegram-chat-id'
-
-            JENKINS_API_CREDS = 'jenkins-api-credentials'
-        }
+        JENKINS_API_CREDS = 'jenkins-api-credentials'
+    }
 
     triggers {
         githubPush()
@@ -30,10 +27,15 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         disableConcurrentBuilds()
+        timestamps()
     }
 
     stages {
         stage('Checkout') {
+            agent {
+                label 'docker-builder'
+            }
+
             steps {
                 checkout scm
 
@@ -43,17 +45,24 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    env.IMAGE_TAG = "${DOCKERHUB_REPO}:${env.GIT_COMMIT_SHORT}"
-
+                    env.IMAGE_TAG = "${env.DOCKERHUB_REPO}:${env.GIT_COMMIT_SHORT}"
+                    echo "Branch: ${env.GIT_BRANCH_NAME}"
                     echo "Image: ${env.IMAGE_TAG}"
                 }
             }
         }
 
         stage('Build Docker Image') {
+            agent {
+                label 'docker-builder'
+            }
+
             steps {
                 sh '''
+                    set -e
+
                     docker build \
+                        --pull \
                         -t "$IMAGE_TAG" \
                         .
                 '''
@@ -61,54 +70,74 @@ pipeline {
         }
 
         stage('Push Docker Image') {
+            agent {
+                label 'docker-builder'
+            }
+
             steps {
                 withCredentials([
                     usernamePassword(
-                        credentialsId: "${DOCKERHUB_CREDS}",
+                        credentialsId: env.DOCKERHUB_CREDS,
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
                     sh '''
+                        set -e
+
                         echo "$DOCKER_PASS" |
                             docker login \
-                            -u "$DOCKER_USER" \
-                            --password-stdin
+                                --username "$DOCKER_USER" \
+                                --password-stdin
 
                         docker push "$IMAGE_TAG"
-
-                        docker logout
                     '''
+                }
+            }
+
+            post {
+                always {
+                    sh 'docker logout 2>/dev/null || true'
                 }
             }
         }
 
         stage('Deploy Kubernetes') {
+            agent {
+                label 'k3s-deployer'
+            }
+
             steps {
                 withCredentials([
-                    sshUserPrivateKey(
-                        credentialsId: "${SSH_CREDS}",
-                        keyFileVariable: 'SSH_KEY',
-                        usernameVariable: 'SSH_USER'
+                    file(
+                        credentialsId: env.KUBECONFIG_CREDS,
+                        variable: 'KUBECONFIG_FILE'
                     )
                 ]) {
                     sh '''
-                        ssh \
-                            -i "$SSH_KEY" \
-                            -o StrictHostKeyChecking=no \
-                            -o ConnectTimeout=10 \
-                            "$SSH_USER@$K8S_HOST" \
-                            "
-                                sudo k3s kubectl set image \
-                                    deployment/$K8S_DEPLOYMENT \
-                                    $K8S_CONTAINER=$IMAGE_TAG \
-                                    -n $K8S_NAMESPACE \
-                                && \
-                                sudo k3s kubectl rollout status \
-                                    deployment/$K8S_DEPLOYMENT \
-                                    -n $K8S_NAMESPACE \
-                                    --timeout=600s
-                            "
+                        set -e
+
+                        export KUBECONFIG="$KUBECONFIG_FILE"
+
+                        echo "Checking Kubernetes connection..."
+                        kubectl cluster-info
+
+                        echo "Updating deployment image..."
+                        kubectl set image \
+                            deployment/"$K8S_DEPLOYMENT" \
+                            "$K8S_CONTAINER"="$IMAGE_TAG" \
+                            --namespace "$K8S_NAMESPACE"
+
+                        echo "Waiting for rollout..."
+                        kubectl rollout status \
+                            deployment/"$K8S_DEPLOYMENT" \
+                            --namespace "$K8S_NAMESPACE" \
+                            --timeout=600s
+
+                        echo "Deployment completed."
+                        kubectl get deployment "$K8S_DEPLOYMENT" \
+                            --namespace "$K8S_NAMESPACE" \
+                            -o wide
                     '''
                 }
             }
@@ -117,58 +146,69 @@ pipeline {
 
     post {
         success {
-            script {
-                sendTelegram(
-                    "✅ *BUILD SUCCEEDED*\n" +
-                    "📦 *Project:* `${env.JOB_NAME}`\n" +
-                    "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
-                    "🔖 *Image:* `${env.IMAGE_TAG ?: 'N/A'}`\n" +
-                    "☸️ *Namespace:* `${env.K8S_NAMESPACE}`\n" +
-                    "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
-                    "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                    "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Time:* ${currentBuild.durationString}"
-                )
+            node('docker-builder') {
+                script {
+                    sendTelegram(
+                        "✅ *BUILD SUCCEEDED*\n" +
+                        "📦 *Project:* `${env.JOB_NAME}`\n" +
+                        "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
+                        "🔖 *Image:* `${env.IMAGE_TAG ?: 'N/A'}`\n" +
+                        "☸️ *Namespace:* `${env.K8S_NAMESPACE}`\n" +
+                        "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
+                        "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                        "🌿 *Branch:* `${env.GIT_BRANCH_NAME ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
+                        "⏱️ *Time:* ${currentBuild.durationString}"
+                    )
+                }
             }
         }
 
         failure {
-            script {
-                sendTelegramWithFile(
-                    "❌ *BUILD FAILED*\n" +
-                    "📦 *Project:* `${env.JOB_NAME}`\n" +
-                    "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
-                    "🔖 *Image:* `${env.IMAGE_TAG ?: 'N/A'}`\n" +
-                    "☸️ *Namespace:* `${env.K8S_NAMESPACE}`\n" +
-                    "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
-                    "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                    "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Time:* ${currentBuild.durationString}"
-                )
+            node('docker-builder') {
+                script {
+                    sendTelegramWithFile(
+                        "❌ *BUILD FAILED*\n" +
+                        "📦 *Project:* `${env.JOB_NAME}`\n" +
+                        "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
+                        "🔖 *Image:* `${env.IMAGE_TAG ?: 'N/A'}`\n" +
+                        "☸️ *Namespace:* `${env.K8S_NAMESPACE}`\n" +
+                        "🚀 *Deployment:* `${env.K8S_DEPLOYMENT}`\n" +
+                        "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                        "🌿 *Branch:* `${env.GIT_BRANCH_NAME ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
+                        "⏱️ *Time:* ${currentBuild.durationString}"
+                    )
+                }
             }
         }
 
         aborted {
-            script {
-                sendTelegramWithFile(
-                    "⚠️ *BUILD HAS BEEN ABORTED*\n" +
-                    "📦 *Project:* `${env.JOB_NAME}`\n" +
-                    "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
-                    "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
-                    "🌿 *Branch:* `${env.GIT_BRANCH ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
-                    "⏱️ *Time:* ${currentBuild.durationString}"
-                )
+            node('docker-builder') {
+                script {
+                    sendTelegramWithFile(
+                        "⚠️ *BUILD ABORTED*\n" +
+                        "📦 *Project:* `${env.JOB_NAME}`\n" +
+                        "📝 *Commit:* `${env.GIT_COMMIT_SHORT ?: 'N/A'}`\n" +
+                        "🔢 *Build:* [#${env.BUILD_NUMBER}](${env.BUILD_URL})\n" +
+                        "🌿 *Branch:* `${env.GIT_BRANCH_NAME ?: env.BRANCH_NAME ?: 'N/A'}`\n" +
+                        "⏱️ *Time:* ${currentBuild.durationString}"
+                    )
+                }
             }
         }
 
-        always {
-            script {
-                sh 'docker logout 2>/dev/null || true'
+        cleanup {
+            node('docker-builder') {
+                script {
+                    sh 'docker logout 2>/dev/null || true'
 
-                if (env.IMAGE_TAG) {
-                    sh """
-                        docker rmi ${env.IMAGE_TAG} 2>/dev/null || true
-                    """
+                    if (env.IMAGE_TAG?.trim()) {
+                        sh '''
+                            docker image rm "$IMAGE_TAG" \
+                                2>/dev/null || true
+                        '''
+                    }
+
+                    deleteDir()
                 }
             }
         }
