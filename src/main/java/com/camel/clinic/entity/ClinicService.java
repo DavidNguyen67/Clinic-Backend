@@ -1,12 +1,14 @@
 package com.camel.clinic.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(name = "services", indexes = {
@@ -56,4 +58,10 @@ public class ClinicService extends SoftDeletableEntity {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Transient
+    @JsonProperty("specialtyId")
+    public UUID getSpecialtyId() {
+        return specialty != null ? specialty.getId() : null;
+    }
 }
