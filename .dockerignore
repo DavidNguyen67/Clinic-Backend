@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Build output
+dist/
+build/
+out/
+coverage/
+.next/
+
+# Git
+.git/
+.gitignore/
+.gitattributes/
+
+# IntelliJ IDEA / JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# AI tools
+.agents/
+.codex/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+.dockerignore
+
+# Other
+assets/
+tmp/
+temp/
+.cache/
